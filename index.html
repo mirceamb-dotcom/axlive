@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AxLive</title>
+<meta name="theme-color" content="#1b2026">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AxLive">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,400..800&display=swap" rel="stylesheet">
+<style>
+/* VOICE: unealtă de șantier, sobră, lizibilă în soare
+   IDEA: tabla de comandă a unui utilaj — bandă de asfalt, marcaj galben, cifre mari de kilometraj
+   PICTURE: planul și profilul sunt imaginea; antetul e un „panou de km”
+   COLOUR and TYPE: asfalt #1b2026, galben marcaj #f5c400, alb; Archivo lat pentru cifre
+   LAYOUT: antet fix, plan stânga + profil dreapta (≥900px), file pe ecrane înguste */
+:root{color-scheme:light dark;--bg:light-dark(#f4f5f6,#0f1215);--panel:light-dark(#fff,#1a1f24);--ink:light-dark(#15191d,#eef1f3);--muted:light-dark(#5d6670,#9aa4ae);--line:light-dark(#dde1e5,#2c333a);--asph:#1b2026;--yel:#f5c400;--red:#d92626;--blue:#1e6eff}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overflow-x:clip;-webkit-tap-highlight-color:transparent}
+h1,h2,.km{font-family:Archivo,system-ui,sans-serif;font-stretch:112%}
+h1{font-size:clamp(30px,5vw,44px);line-height:1.05;margin:0 0 6px;font-weight:800;text-wrap:balance}
+h2{font-size:20px;margin:0 0 10px;font-weight:750}
+.mono{font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+button,select,input{font:inherit;color:inherit}
+button{min-height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line);background:var(--panel);cursor:pointer;white-space:nowrap}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
+button.primary{background:var(--yel);border-color:var(--yel);color:#111;font-weight:700}
+button.ghost{background:transparent}
+button.danger{color:var(--red)}
+button[aria-pressed=true]{background:var(--yel);border-color:var(--yel);color:#111}
+select,input{min-height:44px;font-size:16px;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+.wrap{max-width:1100px;margin:0 auto;padding:clamp(20px,4vw,48px) max(4vw,16px) 80px}
+.bar{background:var(--asph);color:#fff;padding:calc(env(safe-area-inset-top) + 10px) max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar button,.bar select,.bar input{background:#2a3138;border-color:#3a434c;color:#fff}
+.bar button[aria-pressed=true]{background:var(--yel);color:#111;border-color:var(--yel)}
+.brand{font-family:Archivo,sans-serif;font-weight:800;font-stretch:118%;letter-spacing:.01em;font-size:20px;display:flex;align-items:center;gap:8px}
+.brand i{display:inline-block;width:26px;height:14px;background:repeating-linear-gradient(90deg,var(--yel) 0 8px,transparent 8px 12px);border-radius:2px}
+.spacer{flex:1}
+/* Ecran principal */
+.hero{background:var(--asph);color:#fff;border-radius:18px;padding:clamp(20px,4vw,40px);display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:center;margin-bottom:28px}
+.hero p{color:#c9d0d6;margin:0 0 16px;max-width:52ch}
+.hero svg{width:100%;height:auto;display:block}
+.newrow{display:flex;gap:8px;flex-wrap:wrap}.newrow input{flex:1 1 220px;background:#2a3138;border-color:#3a434c;color:#fff}
+ul.list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+ul.list li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+ul.list li>div{flex:1 1 220px;display:flex;flex-direction:column}
+ul.list li.empty{color:var(--muted);display:block}
+button.proj{flex:1 1 260px;text-align:left;border:0;background:transparent;display:flex;flex-direction:column;align-items:flex-start;padding:6px;height:auto;white-space:normal}
+button.proj span{color:var(--muted);font-size:14px}
+.warn{background:#fff4c2;color:#5a4500;border-radius:10px;padding:10px 14px;margin:0 0 16px}
+/* Setări */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;margin:0 0 16px}
+.card p{margin:0 0 10px}
+.card>b,.card #s-ax b{display:block}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:16px}
+table{width:100%;border-collapse:collapse}
+td{padding:4px;vertical-align:middle}
+td input,td select{width:100%}
+.scroll{overflow-x:auto}
+.actions{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 20px}
+/* Teren */
+[data-screen=field]{position:fixed;inset:0;display:flex;flex-direction:column}
+[data-screen=field][hidden]{display:none}
+.kmband{background:var(--asph);color:#fff;padding:6px max(16px,env(safe-area-inset-left)) 10px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;border-bottom:4px solid var(--yel)}
+.km{font-size:clamp(28px,4.4vw,42px);font-weight:800;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
+#off{font-size:18px;font-weight:600;white-space:nowrap}
+#xy,#acc{color:#c9d0d6;font-size:14px;font-variant-numeric:tabular-nums}
+#acc{color:var(--yel);font-weight:700}
+.tabs{display:flex;gap:6px;padding:8px;background:var(--panel);border-bottom:1px solid var(--line);overflow-x:auto}
+.tabs button{flex:1 0 auto}
+.tabs button[aria-selected=true]{background:var(--asph);color:#fff;border-color:var(--asph)}
+.split{flex:1;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);min-height:0}
+.pane{position:relative;min-height:0;display:flex;flex-direction:column;background:var(--panel)}
+.pane+.pane{border-left:1px solid var(--line)}
+.pane canvas{flex:1;width:100%;min-height:0;touch-action:none;display:block}
+.pane .over{position:absolute;right:10px;bottom:10px;display:flex;gap:8px}
+#side-info{padding:8px 12px}#side-info p{margin:4px 0}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+#plan-sel{position:absolute;left:10px;top:10px;max-width:60%}
+#plan-empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--muted)}
+@media(max-width:899px){.split{grid-template-columns:1fr}.pane+.pane{border-left:0}body[data-pane=plan] #side-pane,body:not([data-pane=plan]) #plan-pane{display:none}}
+@media(min-width:900px){.tabs [data-pane=plan]{display:none}}
+@media(max-width:600px){.hero{grid-template-columns:1fr}#xy{display:none}.bar{gap:6px}.bar button,.bar input{min-height:40px;padding:0 10px;font-size:15px}.tabs button{padding:0 12px}}
+dialog{border:0;border-radius:16px;padding:0;background:var(--panel);color:var(--ink);width:min(720px,94vw);max-height:90vh}
+dialog::backdrop{background:rgba(10,12,14,.55)}
+dialog .in{padding:20px}
+dialog.full{width:96vw;height:92vh;max-height:none}
+dialog.full[open]{display:flex;flex-direction:column}
+dialog.full canvas{flex:1;width:100%;min-height:0;touch-action:none;display:block;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.dlgbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px}
+#imp-list li span{flex:1 1 200px;overflow-wrap:anywhere}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--asph);color:#fff;padding:12px 18px;border-radius:12px;max-width:min(92vw,640px);z-index:50;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+@media(prefers-reduced-motion:no-preference){.hero .car{animation:drive 6s ease-in-out infinite alternate}@keyframes drive{from{transform:translateX(0)}to{transform:translateX(150px)}}}
+</style>
+</head>
+<body>
+<!-- ============ ECRAN: proiecte ============ -->
+<section data-screen="home" hidden>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>AxLive</h1>
+        <p>Proiectul de drum pe șantier: încarci axul și DXF-urile din Civil 3D, apoi vezi kilometrajul, profilul tip, transversala și longitudinalul acolo unde stai.</p>
+        <div class="newrow"><input id="newname" placeholder="Nume proiect, ex. DJ 107 – Florești" aria-label="Nume proiect"><button class="primary" id="btn-new">Proiect nou</button></div>
+      </div>
+      <svg viewBox="0 0 360 200" role="img" aria-label="Drum cu ax și marcaj de kilometraj">
+        <defs><linearGradient id="g1" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2d353d"/><stop offset="1" stop-color="#14181c"/></linearGradient></defs>
+        <path d="M-10 190 C 90 170, 150 90, 370 60 L 370 120 C 190 140, 140 200, 60 230 Z" fill="url(#g1)"/>
+        <path d="M20 205 C 110 180, 160 115, 370 90" stroke="#f5c400" stroke-width="4" fill="none" stroke-dasharray="18 12"/>
+        <path d="M-10 190 C 90 170, 150 90, 370 60" stroke="#e8ecef" stroke-width="3" fill="none"/>
+        <path d="M60 230 C 140 200, 190 140, 370 120" stroke="#e8ecef" stroke-width="3" fill="none"/>
+        <g transform="translate(150 70)"><rect x="-4" y="0" width="8" height="58" fill="#c9d0d6"/><rect x="-40" y="-30" width="80" height="34" rx="5" fill="#f5c400"/><text x="0" y="-8" text-anchor="middle" font-family="Archivo,sans-serif" font-weight="800" font-size="18" fill="#111">0+450</text></g>
+        <g class="car"><circle cx="96" cy="160" r="9" fill="#1e6eff" stroke="#fff" stroke-width="3"/><circle cx="96" cy="160" r="22" fill="#1e6eff" opacity=".18"/></g>
+      </svg>
+    </div>
+    <p class="warn" id="storewarn" hidden>Browserul nu permite salvarea datelor aici: proiectele se pierd la închiderea paginii. În versiunea instalată (GitHub Pages) se păstrează.</p>
+    <h2>Proiecte</h2>
+    <ul class="list" id="projlist"></ul>
+  </div>
+</section>
+
+<!-- ============ ECRAN: setări proiect ============ -->
+<section data-screen="setup" hidden>
+  <div class="bar"><button id="btn-home">‹ Proiecte</button><span class="brand"><i></i>AxLive</span><span class="spacer"></span><button class="primary" id="btn-field">Pe teren ›</button></div>
+  <div class="wrap">
+    <h1 id="setup-title"></h1>
+    <p class="muted">Importă fișierele, definește profilurile tip și intervalele, apoi treci „Pe teren”.</p>
+    <div class="actions"><button class="primary" id="btn-import">Importă fișiere (LandXML, DXF)</button></div>
+    <input type="file" id="file-in" multiple hidden>
+    <div class="grid2">
+      <div class="card"><h2>Ax drum</h2><div id="s-ax"></div></div>
+      <div class="card"><h2>Corecție GPS</h2><p class="mono" id="s-shift"></p><p class="muted">Se setează pe teren, cu butonul „Calibrare”, stând pe un reper cunoscut.</p></div>
+    </div>
+    <div class="card"><h2>Fișiere</h2><ul class="list" id="s-docs"></ul></div>
+    <div class="card"><h2>Profiluri tip</h2><p class="muted">Pentru fiecare profil tip: încadrezi desenul lui și îi dai un nume. Apoi îl asociezi pe intervale de km.</p><ul class="list" id="s-typ"></ul></div>
+    <div class="card"><h2>Intervale km → profil tip</h2><p class="muted">Dacă stânga și dreapta diferă, fă câte un rând pentru fiecare parte.</p>
+      <div class="scroll"><table><tbody id="s-int"></tbody></table></div>
+      <p><button id="iv-add">+ Adaugă interval</button></p><p class="muted" id="s-gaps"></p></div>
+    <div class="grid2">
+      <div class="card"><h2>Profiluri transversale</h2><p class="muted">Secțiunile se detectează după eticheta de km de sub fiecare profil.</p><ul class="list" id="s-cross"></ul></div>
+      <div class="card"><h2>Profil longitudinal</h2><p class="muted">Kilometrul se găsește automat după etichetele de pe riglă (ex. 0+150).</p><ul class="list" id="s-long"></ul></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ECRAN: pe teren ============ -->
+<section data-screen="field" hidden>
+  <div class="bar">
+    <button id="btn-setup">‹ Proiect</button><b id="f-title" class="brand" style="font-size:17px"></b><span class="spacer"></span>
+    <button data-src="manual" aria-pressed="true">Manual</button><button data-src="gps" aria-pressed="false">GPS</button>
+    <input id="goto" placeholder="km 0+000" inputmode="decimal" style="width:120px" aria-label="Mergi la km"><button id="btn-goto">Mergi</button>
+    <button id="btn-follow" aria-pressed="true" title="Urmărește poziția">Urmărește</button><button id="btn-dark" aria-pressed="false" title="Fundal închis">Noapte</button><button id="btn-cal">Calibrare</button>
+  </div>
+  <div class="kmband"><span class="km" id="km">—</span><span id="off"></span><span id="acc"></span><span class="spacer"></span><span id="xy"></span></div>
+  <div class="tabs" role="tablist"><button data-pane="plan" role="tab">Plan</button><button data-pane="tip" role="tab">Profil tip</button><button data-pane="trans" role="tab">Transversal</button><button data-pane="long" role="tab">Longitudinal</button></div>
+  <div class="split">
+    <div class="pane" id="plan-pane"><canvas id="plan-cv"></canvas><select id="plan-sel" aria-label="Plan"></select><div id="plan-empty" hidden>Nu ai plan și nici ax. Importă-le din pagina proiectului.</div><div class="over"><button id="btn-fitplan">Tot planul</button></div></div>
+    <div class="pane" id="side-pane"><div id="side-info"></div><canvas id="side-cv"></canvas></div>
+  </div>
+</section>
+
+<!-- ============ DIALOGURI ============ -->
+<dialog id="dlg-import"><div class="in"><h2>Ce conține fiecare fișier?</h2><p class="muted">Am ghicit după nume. Corectează unde e cazul.</p><ul class="list" id="imp-list"></ul>
+  <div class="actions" style="margin-top:16px"><button class="primary" id="imp-go">Importă</button><button id="imp-cancel">Renunță</button></div></div></dialog>
+<dialog id="dlg-zone" class="full"><div class="dlgbar"><b id="zone-title" style="flex:1 1 240px"></b><input id="zone-name" placeholder="Nume (ex. PT1 – debleu)" aria-label="Nume"><input id="zone-km" placeholder="km, ex. 0+125" inputmode="decimal" aria-label="Kilometraj"></div>
+  <canvas id="zone-cv"></canvas>
+  <div class="dlgbar"><span class="muted" style="flex:1 1 240px">Fă zoom (două degete) până când zona dorită umple ecranul.</span><button id="zone-fit">Tot desenul</button><button id="zone-close">Închide</button><button class="primary" id="zone-save">Salvează zona</button></div></dialog>
+<dialog id="dlg-cal"><div class="in"><h2>Calibrare GPS pe punct cunoscut</h2>
+  <p class="muted">Stai pe un reper cu coordonate Stereo 70 cunoscute, cu GPS-ul pornit, câteva secunde. Corecția se aplică tuturor pozițiilor GPS din proiect.</p>
+  <div class="row"><input id="cal-x" placeholder="X (Nord)" inputmode="decimal" aria-label="X Nord"><input id="cal-y" placeholder="Y (Est)" inputmode="decimal" aria-label="Y Est"></div>
+  <p class="muted" id="cal-info"></p>
+  <div class="actions"><button class="primary" id="cal-do">Calibrează</button><button class="danger" id="cal-reset">Resetează corecția</button><button id="cal-close">Închide</button></div></div></dialog>
+<dialog id="dlg-layers"><div class="in"><h2>Layere afișate</h2><ul class="list" id="lay-list"></ul>
+  <div class="actions" style="margin-top:16px"><button class="primary" id="lay-apply">Aplică</button><button id="lay-close">Închide</button></div></div></dialog>
+<div id="toast" hidden role="status"></div>
+<script>// AxLive — nucleu de calcul (fără DOM): Stereo 70, LandXML, DXF, kilometraj, etichete km.
+const AX = (() => {
+  const D2R = Math.PI / 180;
+
+  // ---------- Stereo 70 (EPSG:3844, Helmert EPSG coordinate frame) ----------
+  const aW = 6378137.0, fW = 1 / 298.257223563, aK = 6378245.0, fK = 1 / 298.3;
+  const TX = 2.329, TY = -147.042, TZ = -92.08, RX = 0.309, RY = -0.325, RZ = -0.497, SPPM = 5.69;
+  const LAT0 = 46 * D2R, LON0 = 25 * D2R, K0 = 0.99975, FE = 500000, FN = 500000;
+  const C = (() => {
+    const e2 = fK * (2 - fK), e = Math.sqrt(e2), s0 = Math.sin(LAT0);
+    const rho0 = aK * (1 - e2) / Math.pow(1 - e2 * s0 * s0, 1.5), nu0 = aK / Math.sqrt(1 - e2 * s0 * s0);
+    const R = Math.sqrt(rho0 * nu0), n = Math.sqrt(1 + e2 * Math.pow(Math.cos(LAT0), 4) / (1 - e2));
+    const S1 = (1 + s0) / (1 - s0), S2 = (1 - e * s0) / (1 + e * s0), w1 = Math.pow(S1 * Math.pow(S2, e), n);
+    const sc = (w1 - 1) / (w1 + 1), c = (n + s0) * (1 - sc) / ((n - s0) * (1 + sc)), w2 = c * w1;
+    const chi0 = Math.asin((w2 - 1) / (w2 + 1));
+    return { e, n, c, R, chi0 };
+  })();
+  function cart(lat, lon, h, a, f) {
+    const e2 = f * (2 - f), N = a / Math.sqrt(1 - e2 * Math.sin(lat) ** 2);
+    return [(N + h) * Math.cos(lat) * Math.cos(lon), (N + h) * Math.cos(lat) * Math.sin(lon), (N * (1 - e2) + h) * Math.sin(lat)];
+  }
+  function geod(x, y, z, a, f) {
+    const e2 = f * (2 - f), p = Math.hypot(x, y), lon = Math.atan2(y, x);
+    let lat = Math.atan2(z, p * (1 - e2));
+    for (let i = 0; i < 10; i++) {
+      const N = a / Math.sqrt(1 - e2 * Math.sin(lat) ** 2), h = p / Math.cos(lat) - N;
+      lat = Math.atan2(z, p * (1 - e2 * N / (N + h)));
+    }
+    return [lat, lon];
+  }
+  const SEC = Math.PI / (180 * 3600), rx = RX * SEC, ry = RY * SEC, rz = RZ * SEC, M = 1 + SPPM * 1e-6;
+  function fromWGS84(lat, lon) {
+    const [x, y, z] = cart(lat * D2R, lon * D2R, 0, aW, fW);
+    const dx = (x - TX) / M, dy = (y - TY) / M, dz = (z - TZ) / M;
+    const xl = dx - rz * dy + ry * dz, yl = rz * dx + dy - rx * dz, zl = -ry * dx + rx * dy + dz;
+    const [phi, lam] = geod(xl, yl, zl, aK, fK);
+    const sp = Math.sin(phi), L = C.n * (lam - LON0) + LON0;
+    const Sa = (1 + sp) / (1 - sp), Sb = (1 - C.e * sp) / (1 + C.e * sp);
+    const w = C.c * Math.pow(Sa * Math.pow(Sb, C.e), C.n), chi = Math.asin((w - 1) / (w + 1));
+    const dL = L - LON0, B = 1 + Math.sin(chi) * Math.sin(C.chi0) + Math.cos(chi) * Math.cos(C.chi0) * Math.cos(dL);
+    return {
+      e: FE + 2 * C.R * K0 * Math.cos(chi) * Math.sin(dL) / B,
+      n: FN + 2 * C.R * K0 * (Math.sin(chi) * Math.cos(C.chi0) - Math.cos(chi) * Math.sin(C.chi0) * Math.cos(dL)) / B
+    };
+  }
+  function toWGS84(E, N) {
+    const g = 2 * C.R * K0 * Math.tan(Math.PI / 4 - C.chi0 / 2), h = 4 * C.R * K0 * Math.tan(C.chi0) + g;
+    E -= FE; N -= FN;
+    const i = Math.atan(E / (h + N)), j = Math.atan(E / (g - N)) - i;
+    const chi = C.chi0 + 2 * Math.atan((N - E * Math.tan(j / 2)) / (2 * C.R * K0));
+    const lam = (j + 2 * i) / C.n + LON0;
+    const psi = 0.5 * Math.log((1 + Math.sin(chi)) / (C.c * (1 - Math.sin(chi)))) / C.n;
+    let phi = 2 * Math.atan(Math.exp(psi)) - Math.PI / 2;
+    for (let k = 0; k < 15; k++) {
+      const sp = Math.sin(phi), psiI = Math.log(Math.tan(phi / 2 + Math.PI / 4) * Math.pow((1 - C.e * sp) / (1 + C.e * sp), C.e / 2));
+      phi -= (psiI - psi) * Math.cos(phi) * (1 - C.e * C.e * sp * sp) / (1 - C.e * C.e);
+    }
+    const [x, y, z] = cart(phi, lam, 0, aK, fK);
+    const xw = TX + M * (x + rz * y - ry * z), yw = TY + M * (-rz * x + y + rx * z), zw = TZ + M * (ry * x - rx * y + z);
+    const [la, lo] = geod(xw, yw, zw, aW, fW);
+    return { lat: la / D2R, lon: lo / D2R };
+  }
+
+  // ---------- Kilometraj ----------
+  function kmFmt(m, dec = 2) {
+    if (m == null || !isFinite(m)) return '—';
+    const neg = m < 0; let v = Math.abs(m), k = Math.floor(v / 1000);
+    let r = Math.round((v - k * 1000) * 10 ** dec) / 10 ** dec;
+    if (r >= 1000) { k++; r -= 1000; }
+    const rs = r.toFixed(dec).padStart(dec ? 4 + dec : 3, '0');
+    return (neg ? '-' : '') + k + '+' + rs;
+  }
+  function kmParse(s) {
+    let t = String(s).toLowerCase().replace(/km/g, '').replace(/,/g, '.').replace(/\s/g, '');
+    if (!t) return null;
+    const p = t.indexOf('+');
+    if (p >= 0) {
+      const a = parseFloat(t.slice(0, p) || '0'), b = parseFloat(t.slice(p + 1));
+      return isFinite(a) && isFinite(b) ? a * 1000 + b : null;
+    }
+    const v = parseFloat(t); return isFinite(v) ? v : null;
+  }
+
+  // ---------- LandXML ----------
+  function attrs(s) { const o = {}; s.replace(/([\w:]+)\s*=\s*"([^"]*)"/g, (_, k, v) => { o[k] = v; }); return o; }
+  function pt(txt) { const v = txt.trim().split(/\s+/).map(Number); return v.length >= 2 && isFinite(v[0]) && isFinite(v[1]) ? [v[1], v[0]] : null; } // N E -> [e,n]
+  function readLandXML(text) {
+    const cg = {};
+    text.replace(/<(?:\w+:)?CgPoint\b([^>]*)>([^<]*)<\/(?:\w+:)?CgPoint>/g, (_, a, t) => { const at = attrs(a); const p = pt(t); if (at.name && p) cg[at.name] = p; });
+    const out = [];
+    const reA = /<(?:\w+:)?Alignment\b([^>]*)>([\s\S]*?)<\/(?:\w+:)?Alignment>/g;
+    let m;
+    while ((m = reA.exec(text))) {
+      const at = attrs(m[1]); const body = m[2];
+      const cgm = /<(?:\w+:)?CoordGeom\b[^>]*>([\s\S]*?)<\/(?:\w+:)?CoordGeom>/.exec(body);
+      if (!cgm) continue;
+      const pts = [];
+      const add = list => { for (const p of list) { const l = pts[pts.length - 1]; if (l && Math.abs(l[0] - p[0]) < 1e-6 && Math.abs(l[1] - p[1]) < 1e-6) continue; pts.push(p); } };
+      const reE = /<(?:\w+:)?(Line|Curve|Spiral)\b([^>]*)>([\s\S]*?)<\/(?:\w+:)?\1>/g;
+      let e;
+      while ((e = reE.exec(cgm[1]))) {
+        const kind = e[1], ea = attrs(e[2]), inner = e[3], P = {};
+        inner.replace(/<(?:\w+:)?(Start|End|Center|PI)\b([^>]*?)(?:\/>|>([^<]*)<\/(?:\w+:)?\1>)/g, (_, tag, a2, t) => {
+          const p = (t && pt(t)) || (attrs(a2 || '').pntRef && cg[attrs(a2).pntRef]); if (p) P[tag] = p;
+        });
+        if (!P.Start || !P.End) continue;
+        if (kind === 'Line') add([P.Start, P.End]);
+        else if (kind === 'Curve') add(P.Center ? arcPts(P.Start, P.End, P.Center, (ea.rot || '').toLowerCase() === 'cw') : [P.Start, P.End]);
+        else add(spiralPts(ea, P.Start, P.End, P.PI));
+      }
+      if (pts.length < 2) continue;
+      const st0 = parseFloat(at.staStart || '0') || 0, sta = [st0];
+      for (let i = 1; i < pts.length; i++) sta.push(sta[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+      out.push({ name: at.name || 'Ax', staStart: st0, pts, sta });
+    }
+    return out;
+  }
+  function arcPts(s, e, c, cw) {
+    const r = Math.hypot(s[0] - c[0], s[1] - c[1]), a0 = Math.atan2(s[1] - c[1], s[0] - c[0]), a1 = Math.atan2(e[1] - c[1], e[0] - c[0]);
+    let sw = a1 - a0;
+    if (cw) while (sw > 0) sw -= 2 * Math.PI; else while (sw < 0) sw += 2 * Math.PI;
+    const n = Math.max(2, Math.ceil(Math.max(Math.abs(sw) * r, Math.abs(sw) / (2 * D2R))));
+    const o = []; for (let i = 0; i <= n; i++) { const a = a0 + sw * i / n; o.push([c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)]); }
+    o[o.length - 1] = e; return o;
+  }
+  function rad(v) { const f = parseFloat(v); return !isFinite(f) || f === 0 ? Infinity : f; }
+  function spiralPts(a, s, e, pi) {
+    const L = parseFloat(a.length); if (!(L > 0)) return [s, e];
+    const rS = rad(a.radiusStart), rE = rad(a.radiusEnd), kS = isFinite(rS) ? 1 / rS : 0, kE = isFinite(rE) ? 1 / rE : 0;
+    const sign = (a.rot || '').toLowerCase() === 'cw' ? -1 : 1;
+    const th0 = pi ? Math.atan2(pi[1] - s[1], pi[0] - s[0]) : Math.atan2(e[1] - s[1], e[0] - s[0]);
+    const n = Math.max(4, Math.ceil(L / 0.5)), ds = L / n; let x = 0, y = 0; const raw = [[0, 0]];
+    for (let i = 0; i < n; i++) { const sm = (i + .5) * ds, th = th0 + sign * (kS * sm + (kE - kS) * sm * sm / (2 * L)); x += ds * Math.cos(th); y += ds * Math.sin(th); raw.push([x, y]); }
+    const tx = e[0] - s[0], ty = e[1] - s[1], d2 = x * x + y * y; if (!(d2 > 0)) return [s, e];
+    const ar = (tx * x + ty * y) / d2, ai = (ty * x - tx * y) / d2;
+    return raw.map(([px, py]) => [s[0] + px * ar - py * ai, s[1] + px * ai + py * ar]);
+  }
+  function stationOffset(al, p) {
+    if (!al || al.pts.length < 2) return null;
+    const P = al.pts, last = P.length - 2; let best = null;
+    for (let i = 0; i <= last; i++) {
+      const a = P[i], b = P[i + 1], dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy; if (L2 <= 0) continue;
+      const L = Math.sqrt(L2); let t = ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2, out = false;
+      if (t < 0) { if (i === 0) out = true; else t = 0; }
+      if (t > 1) { if (i === last) out = true; else t = 1; }
+      const tc = Math.min(Math.max(t, 0), 1), qx = a[0] + tc * dx, qy = a[1] + tc * dy, d2 = (p[0] - qx) ** 2 + (p[1] - qy) ** 2;
+      if (!best || d2 < best.d2) best = { d2, station: al.sta[i] + t * L, offset: (dx * (p[1] - a[1]) - dy * (p[0] - a[0])) / L, outside: out };
+    }
+    return best;
+  }
+  function pointAt(al, km) {
+    const P = al.pts, S = al.sta; if (km <= S[0]) return P[0];
+    for (let i = 0; i < P.length - 1; i++) if (km <= S[i + 1]) { const t = (km - S[i]) / ((S[i + 1] - S[i]) || 1); return [P[i][0] + t * (P[i + 1][0] - P[i][0]), P[i][1] + t * (P[i + 1][1] - P[i][1])]; }
+    return P[P.length - 1];
+  }
+
+  // ---------- DXF ----------
+  const BYFG = 'fg';
+  const ACI = [null, '#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff', BYFG, '#808080', '#c0c0c0'];
+  function aci(i) {
+    if (i >= 1 && i <= 9) return ACI[i];
+    if (i >= 250 && i <= 255) { const g = [51, 91, 132, 173, 214, 255][i - 250]; return `rgb(${g},${g},${g})`; }
+    if (i >= 10 && i <= 249) {
+      const h = (Math.floor(i / 10) - 1) * 15, sub = i % 10, v = [1, 1, .65, .65, .5, .5, .3, .3, .15, .15][sub], s = sub % 2 ? .5 : 1;
+      const f = (n) => { const k = (n + h / 60) % 6; return Math.round(255 * (v - v * s * Math.max(0, Math.min(k, 4 - k, 1)))); };
+      return `rgb(${f(5)},${f(3)},${f(1)})`;
+    }
+    return BYFG;
+  }
+  function decodeText(s) {
+    return s.replace(/\\U\+([0-9A-Fa-f]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+      .replace(/%%c/gi, 'Ø').replace(/%%d/gi, '°').replace(/%%p/gi, '±').replace(/%%[uo]/gi, '');
+  }
+  function stripMText(s) {
+    return s.replace(/\\P/g, '\n').replace(/\\~/g, ' ').replace(/\\[ACcFfHhQTWp][^;]*;/g, '').replace(/\\[LlOoKkN]/g, '')
+      .replace(/\\S([^;]*)\^([^;]*);/g, '$1/$2').replace(/[{}]/g, '');
+  }
+  function bulgePoly(vs, closed) {
+    if (!vs.length) return [];
+    const out = [[vs[0][0], vs[0][1]]], n = vs.length, segs = closed ? n : n - 1;
+    for (let i = 0; i < segs; i++) {
+      const [x0, y0, b] = vs[i], [x1, y1] = vs[(i + 1) % n];
+      if (Math.abs(b) > 1e-9) {
+        const th = 4 * Math.atan(b), ch = Math.hypot(x1 - x0, y1 - y0);
+        if (ch > 0) {
+          const r = ch / (2 * Math.sin(Math.abs(th) / 2)), mx = (x0 + x1) / 2, my = (y0 + y1) / 2, d = r * Math.cos(th / 2);
+          const ux = (x1 - x0) / ch, uy = (y1 - y0) / ch, s = b > 0 ? 1 : -1, cx = mx - uy * d * s, cy = my + ux * d * s;
+          const a0 = Math.atan2(y0 - cy, x0 - cx), k = Math.max(8, Math.min(256, Math.floor(Math.abs(th) / (5 * D2R)) + 1));
+          for (let j = 1; j < k; j++) { const a = a0 + th * j / k; out.push([cx + Math.abs(r) * Math.cos(a), cy + Math.abs(r) * Math.sin(a)]); }
+        }
+      }
+      out.push([x1, y1]);
+    }
+    return out;
+  }
+  function arcPoly(cx, cy, r, a0, a1) {
+    const sw = a1 - a0, n = Math.max(8, Math.min(256, Math.floor(Math.abs(sw) / (5 * D2R)) + 1)), o = [];
+    for (let k = 0; k <= n; k++) { const a = a0 + sw * k / n; o.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+    return o;
+  }
+
+  /** Citește DXF ASCII. Întoarce { polys: Map(culoare -> [[x,y,...],...]), texts, bounds, layers, origin } */
+  function readDXF(text, hidden = new Set()) {
+    if (text.startsWith('AutoCAD Binary DXF')) throw new Error('DXF binar — salvează ca DXF ASCII.');
+    const lines = text.split(/\r?\n/);
+    const ents = { }; let section = '', cur = null;
+    const flush = () => { if (cur) (ents[section] = ents[section] || []).push(cur); cur = null; };
+    for (let i = 0; i + 1 < lines.length; i += 2) {
+      const code = parseInt(lines[i], 10); if (isNaN(code)) continue;
+      const val = lines[i + 1];
+      if (code === 0) {
+        flush(); const t = val.trim();
+        if (t === 'SECTION') { if (parseInt(lines[i + 2], 10) === 2) { section = lines[i + 3].trim(); i += 2; } }
+        else if (t === 'ENDSEC') section = '';
+        else if (t === 'EOF') break;
+        else cur = { type: t, p: [] };
+      } else if (cur) cur.p.push([code, val]);
+    }
+    flush();
+    const g = (e, c) => { for (const q of e.p) if (q[0] === c) return q[1]; return undefined; };
+    const d = (e, c, def = 0) => { const v = g(e, c); const f = v === undefined ? NaN : parseFloat(v); return isFinite(f) ? f : def; };
+    const n = (e, c, def = 0) => { const v = g(e, c); const f = v === undefined ? NaN : parseInt(v, 10); return isFinite(f) ? f : def; };
+    const layers = {};
+    for (const e of ents.TABLES || []) if (e.type === 'LAYER') {
+      const nm = (g(e, 2) || '').trim(); const col = n(e, 62, 7), fl = n(e, 70), tc = g(e, 420);
+      layers[nm] = { color: Math.abs(col), visible: col >= 0 && !(fl & 1), tc: tc !== undefined ? parseInt(tc, 10) : null };
+    }
+    const blocks = {}; let bn = null, bb = null;
+    for (const e of ents.BLOCKS || []) {
+      if (e.type === 'BLOCK') { bn = (g(e, 2) || '').trim(); bb = { base: [d(e, 10), d(e, 20)], ents: [] }; }
+      else if (e.type === 'ENDBLK') { if (bn) blocks[bn] = bb; bn = null; bb = null; }
+      else if (bb) bb.ents.push(e);
+    }
+    const polys = new Map(), texts = [];
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, count = 0;
+    const hexTC = v => '#' + (v & 0xffffff).toString(16).padStart(6, '0');
+    const addPoly = (pts, col, closed) => {
+      const good = pts.filter(p => isFinite(p[0]) && isFinite(p[1]) && Math.abs(p[0]) < 1e9 && Math.abs(p[1]) < 1e9);
+      if (good.length < 2) return;
+      if (closed) good.push(good[0]);
+      const flat = new Float64Array(good.length * 2);
+      good.forEach((p, i) => { flat[2 * i] = p[0]; flat[2 * i + 1] = p[1]; if (p[0] < minX) minX = p[0]; if (p[0] > maxX) maxX = p[0]; if (p[1] < minY) minY = p[1]; if (p[1] > maxY) maxY = p[1]; });
+      if (!polys.has(col)) polys.set(col, []); polys.get(col).push(flat); count++;
+    };
+    const T = (m, x, y) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]];
+    const mul = (a, b) => [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1], a[0] * b[2] + a[2] * b[3], a[1] * b[2] + a[3] * b[3], a[0] * b[4] + a[2] * b[5] + a[4], a[1] * b[4] + a[3] * b[5] + a[5]];
+    const layerOf = (e, ctx) => { const l = (g(e, 8) || '0').trim(); return l === '0' && ctx.depth > 0 ? ctx.layer : l; };
+    const visible = (e, ctx) => { const l = layerOf(e, ctx); if (hidden.has(l)) return false; if (layers[l] && !layers[l].visible) return false; return n(e, 60) !== 1; };
+    const color = (e, ctx) => {
+      const tc = g(e, 420); if (tc !== undefined) return hexTC(parseInt(tc, 10));
+      const c = n(e, 62, 256);
+      if (c === 0) return ctx.color || BYFG;
+      if (c === 256) { const L = layers[layerOf(e, ctx)]; if (!L) return BYFG; return L.tc != null ? hexTC(L.tc) : aci(L.color); }
+      return aci(Math.abs(c));
+    };
+    const draw = (list, ctx) => {
+      for (let i = 0; i < list.length; i++) {
+        const e = list[i];
+        if (e.type === 'POLYLINE') {
+          const verts = []; let j = i + 1;
+          while (j < list.length && list[j].type === 'VERTEX') verts.push(list[j++]);
+          if (j < list.length && list[j].type === 'SEQEND') j++;
+          if (visible(e, ctx)) {
+            const fl = n(e, 70), flip = !(fl & 8) && d(e, 230, 1) < 0;
+            const vs = verts.filter(v => !(n(v, 70) & 16)).map(v => [d(v, 10), d(v, 20), d(v, 42)]);
+            addPoly(bulgePoly(vs, !!(fl & 1)).map(p => T(ctx.m, flip ? -p[0] : p[0], p[1])), color(e, ctx), false);
+          }
+          i = j - 1; continue;
+        }
+        entity(e, ctx);
+      }
+    };
+    const entity = (e, ctx) => {
+      const t = e.type;
+      if (t === 'INSERT' || t === 'DIMENSION') {
+        if (!visible(e, ctx) || ctx.depth >= 8) return;
+        const b = blocks[(g(e, 2) || '').trim()]; if (!b) return;
+        const child = { layer: layerOf(e, ctx), color: color(e, ctx), depth: ctx.depth + 1 };
+        if (t === 'DIMENSION') { draw(b.ents, { ...child, m: ctx.m }); return; }
+        const sx = d(e, 41, 1), sy = d(e, 42, 1), rot = d(e, 50) * D2R, flip = d(e, 230, 1) < 0;
+        const ix = flip ? -d(e, 10) : d(e, 10), iy = d(e, 20);
+        const cols = Math.max(1, n(e, 70, 1)), rows = Math.max(1, n(e, 71, 1)), dc = d(e, 44), dr = d(e, 45);
+        const r = flip ? -rot : rot, cs = Math.cos(r), sn = Math.sin(r);
+        for (let rr = 0; rr < rows; rr++) for (let cc = 0; cc < cols; cc++) {
+          let m = [1, 0, 0, 1, -b.base[0], -b.base[1]];
+          m = mul([flip ? -sx : sx, 0, 0, sy, 0, 0], m);
+          m = mul([1, 0, 0, 1, cc * dc * (flip ? -1 : 1), rr * dr], m);
+          m = mul([cs, sn, -sn, cs, 0, 0], m);
+          m = mul([1, 0, 0, 1, ix, iy], m);
+          m = mul(ctx.m, m);
+          draw(b.ents, { ...child, m });
+        }
+        return;
+      }
+      if (!visible(e, ctx)) return;
+      const col = color(e, ctx), flip = d(e, 230, 1) < 0, P = (x, y) => T(ctx.m, flip ? -x : x, y);
+      switch (t) {
+        case 'LINE': addPoly([T(ctx.m, d(e, 10), d(e, 20)), T(ctx.m, d(e, 11), d(e, 21))], col); break;
+        case 'LWPOLYLINE': {
+          const vs = []; for (const [c, v] of e.p) { if (c === 10) vs.push([parseFloat(v), 0, 0]); else if (c === 20 && vs.length) vs[vs.length - 1][1] = parseFloat(v); else if (c === 42 && vs.length) vs[vs.length - 1][2] = parseFloat(v); }
+          const cl = !!(n(e, 70) & 1); addPoly(bulgePoly(vs, cl).map(p => P(p[0], p[1])), col, false); break;
+        }
+        case 'ARC': {
+          let a0 = d(e, 50) * D2R, a1 = d(e, 51) * D2R; while (a1 <= a0) a1 += 2 * Math.PI;
+          addPoly(arcPoly(d(e, 10), d(e, 20), d(e, 40), a0, a1).map(p => P(p[0], p[1])), col); break;
+        }
+        case 'CIRCLE': addPoly(arcPoly(d(e, 10), d(e, 20), d(e, 40), 0, 2 * Math.PI).map(p => P(p[0], p[1])), col); break;
+        case 'ELLIPSE': {
+          const cx = d(e, 10), cy = d(e, 20), mx = d(e, 11), my = d(e, 21), ra = d(e, 40, 1); let t0 = d(e, 41, 0), t1 = d(e, 42, 2 * Math.PI);
+          while (t1 <= t0) t1 += 2 * Math.PI; const o = [];
+          for (let k = 0; k <= 72; k++) { const tt = t0 + (t1 - t0) * k / 72; o.push(P(cx + mx * Math.cos(tt) - my * ra * Math.sin(tt), cy + my * Math.cos(tt) + mx * ra * Math.sin(tt))); }
+          addPoly(o, col); break;
+        }
+        case 'SPLINE': {
+          const fit = [], ctl = []; for (const [c, v] of e.p) { if (c === 10) ctl.push([+v, 0]); else if (c === 20 && ctl.length) ctl[ctl.length - 1][1] = +v; else if (c === 11) fit.push([+v, 0]); else if (c === 21 && fit.length) fit[fit.length - 1][1] = +v; }
+          addPoly((fit.length >= 2 ? fit : ctl).map(p => T(ctx.m, p[0], p[1])), col); break;
+        }
+        case 'SOLID': case 'TRACE': case '3DFACE': {
+          const p1 = P(d(e, 10), d(e, 20)), p2 = P(d(e, 11), d(e, 21)), p3 = P(d(e, 12), d(e, 22)), p4 = P(d(e, 13, d(e, 12)), d(e, 23, d(e, 22)));
+          addPoly(t === '3DFACE' ? [p1, p2, p3, p4] : [p1, p2, p4, p3], col, true); break;
+        }
+        case 'LEADER': {
+          const o = []; for (const [c, v] of e.p) { if (c === 10) o.push([+v, 0]); else if (c === 20 && o.length) o[o.length - 1][1] = +v; }
+          addPoly(o.map(p => T(ctx.m, p[0], p[1])), col); break;
+        }
+        case 'TEXT': case 'ATTRIB': case 'MTEXT': {
+          let str, h, v, x, y, rotDeg;
+          if (t === 'MTEXT') {
+            str = ''; for (const [c, vv] of e.p) if (c === 3) str += vv; str += g(e, 1) || ''; str = stripMText(str);
+            rotDeg = e.p.some(q => q[0] === 11) ? Math.atan2(d(e, 21), d(e, 11)) / D2R : d(e, 50);
+            const att = n(e, 71, 1); h = (att - 1) % 3; v = 3 - Math.floor((att - 1) / 3); x = d(e, 10); y = d(e, 20);
+          } else {
+            str = g(e, 1) || ''; h = Math.min(n(e, 72), 2); v = n(e, 73); const al = h !== 0 || v !== 0;
+            x = al ? d(e, 11, d(e, 10)) : d(e, 10); y = al ? d(e, 21, d(e, 20)) : d(e, 20); rotDeg = d(e, 50);
+          }
+          str = decodeText(str); if (!str.trim()) break;
+          const pos = P(x, y), ux = (flip ? -1 : 1) * Math.cos(rotDeg * D2R), uy = Math.sin(rotDeg * D2R);
+          const m = ctx.m, tux = m[0] * ux + m[2] * uy, tuy = m[1] * ux + m[3] * uy, sc = Math.sqrt(Math.abs(m[0] * m[3] - m[1] * m[2])) || 1;
+          if (!isFinite(pos[0]) || Math.abs(pos[0]) > 1e9) break;
+          texts.push({ x: pos[0], y: pos[1], h: d(e, 40, 1) * sc, rot: Math.atan2(tuy, tux), s: str, ha: h, va: v, col });
+          break;
+        }
+      }
+    };
+    const model = (ents.ENTITIES || []).filter(e => n(e, 67) === 0);
+    draw(model, { m: [1, 0, 0, 1, 0, 0], layer: '0', color: null, depth: 0 });
+    for (const t of texts) { if (t.x < minX) minX = t.x; if (t.x > maxX) maxX = t.x; if (t.y < minY) minY = t.y; if (t.y > maxY) maxY = t.y; }
+    if (!count && !texts.length) throw new Error('DXF-ul nu are entități desenabile în Model.');
+    return { polys, texts, bounds: [minX, minY, maxX, maxY], layers: Object.keys(layers).sort(), count };
+  }
+
+  // ---------- Etichete km, calibrări ----------
+  const KMRE = /(?:km\.?\s*)?(\d{1,3})\s*\+\s*(\d{3}(?:[.,]\d{1,3})?)(?!\d)/i;
+  function kmOfText(s) { const m = KMRE.exec(s); return m ? parseInt(m[1], 10) * 1000 + parseFloat(m[2].replace(',', '.')) : null; }
+  function kmLabels(dr) {
+    const o = [];
+    for (const t of dr.texts) {
+      const km = kmOfText(t.s); if (km == null) continue;
+      const w = t.s.length * t.h * 0.7, dx = t.ha === 1 ? 0 : t.ha === 2 ? -w / 2 : w / 2, dy = t.va === 2 ? 0 : t.va === 3 ? -t.h / 2 : t.h / 2;
+      o.push({ km, x: t.x + dx * Math.cos(t.rot) - dy * Math.sin(t.rot), y: t.y + dx * Math.sin(t.rot) + dy * Math.cos(t.rot), h: t.h, s: t.s });
+    }
+    return o;
+  }
+  const med = a => { const s = [...a].sort((p, q) => p - q); return s[Math.floor(s.length / 2)]; };
+  function linFit(pairs) {
+    if (pairs.length < 2) return null; const n = pairs.length, mk = pairs.reduce((s, p) => s + p.km, 0) / n, mx = pairs.reduce((s, p) => s + p.x, 0) / n;
+    let sxy = 0, sxx = 0; for (const p of pairs) { sxy += (p.km - mk) * (p.x - mx); sxx += (p.km - mk) ** 2; }
+    if (!(sxx > 0)) return null; const m = sxy / sxx; return { m, q: mx - m * mk };
+  }
+  function autoLongitudinal(labels) {
+    if (labels.length < 2) return null;
+    const tol = med(labels.map(l => l.h)) * 1.5; let best = [];
+    const distinct = g => new Set(g.map(l => Math.round(l.km * 100))).size;
+    for (const l of labels) { const g = labels.filter(o => Math.abs(o.y - l.y) <= tol); if (distinct(g) > distinct(best)) best = g; }
+    let pairs = best.map(l => ({ km: l.km, x: l.x })), fit = linFit(pairs); if (!fit) return null;
+    for (let it = 0; it < 3; it++) {
+      const res = pairs.map(p => Math.abs(fit.m * p.km + fit.q - p.x)), md = med(res);
+      const keep = pairs.filter((_, i) => res[i] <= Math.max(md * 3, tol));
+      if (keep.length < 2 || keep.length === pairs.length) break; pairs = keep; fit = linFit(pairs) || fit;
+    }
+    const kms = best.map(l => l.km);
+    return { m: fit.m, q: fit.q, kmFrom: Math.min(...kms), kmTo: Math.max(...kms) };
+  }
+  function dedupe(labels) { const s = new Set(); return labels.filter(l => { const k = Math.round(l.km * 100); if (s.has(k)) return false; s.add(k); return true; }); }
+  function defaultTemplate(labels) {
+    const h = med(labels.map(l => l.h)), dxs = [], dys = [];
+    for (const l of labels) {
+      const row = labels.filter(o => o.km !== l.km && Math.abs(o.y - l.y) < h * 2).map(o => Math.abs(o.x - l.x)).filter(v => v > h);
+      if (row.length) dxs.push(Math.min(...row));
+      const oth = labels.filter(o => Math.abs(o.y - l.y) >= h * 2).map(o => Math.abs(o.y - l.y)); if (oth.length) dys.push(Math.min(...oth));
+    }
+    const w = dxs.length ? med(dxs) * .96 : h * 40, hh = dys.length ? med(dys) * .8 : h * 25;
+    return { dx: -w / 2, dy: -h * 2, w, h: hh };
+  }
+  function crossSections(labels, tpl) {
+    return dedupe(labels).map(l => ({ km: l.km, rect: [l.x + tpl.dx, l.y + tpl.dy, tpl.w, tpl.h] })).sort((a, b) => a.km - b.km);
+  }
+
+  // ---------- Clasificare fișiere după nume ----------
+  function classify(name) {
+    const ext = (name.split('.').pop() || '').toLowerCase();
+    if (ext === 'xml' || ext === 'landxml') return 'ax';
+    if (ext !== 'dxf') return 'skip';
+    const n = name.slice(0, -(ext.length + 1)).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+    const tok = new Set(n.split(/[^0-9a-z]+/).filter(Boolean)), has = a => a.some(x => n.includes(x));
+    if (has(['transv', 'sectiun', 'cross']) || (tok.has('pt') && tok.has('tr'))) return 'transversale';
+    if (has(['longit', 'lung', 'profil_l', 'profil l']) || tok.has('pl')) return 'longitudinal';
+    if (has(['tip', 'typical']) || tok.has('pt')) return 'tipuri';
+    if (has(['plan', 'situat']) || tok.has('ps')) return 'plan';
+    return 'skip';
+  }
+
+  return { fromWGS84, toWGS84, kmFmt, kmParse, readLandXML, stationOffset, pointAt, readDXF, kmLabels, autoLongitudinal,
+    defaultTemplate, crossSections, dedupe, classify, BYFG };
+})();
+
+</script>
+<script>// AxLive — interfață web
+{
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const ROLES = { plan: 'Plan de situație', longitudinal: 'Profil longitudinal', tipuri: 'Profiluri tip', transversale: 'Profiluri transversale', ax: 'Ax (LandXML)', skip: 'Ignoră' };
+const SIDES = { ambele: 'Ambele părți', stanga: 'Stânga', dreapta: 'Dreapta' };
+
+// ---------------- Stocare (IndexedDB, cu rezervă în memorie) ----------------
+const Store = {
+  db: null, mem: { projects: new Map(), files: new Map() }, ok: false,
+  async open() {
+    try {
+      this.db = await new Promise((res, rej) => {
+        const r = indexedDB.open('axlive', 1);
+        r.onupgradeneeded = () => { r.result.createObjectStore('projects', { keyPath: 'id' }); r.result.createObjectStore('files'); };
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      });
+      this.ok = true;
+    } catch (e) { this.db = null; this.ok = false; }
+  },
+  tx(store, mode, fn) {
+    return new Promise((res, rej) => { const t = this.db.transaction(store, mode), s = t.objectStore(store), r = fn(s); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); });
+  },
+  async allProjects() { if (!this.db) return [...this.mem.projects.values()]; try { return await this.tx('projects', 'readonly', s => s.getAll()); } catch { return [...this.mem.projects.values()]; } },
+  async saveProject(p) { const c = JSON.parse(JSON.stringify(p)); this.mem.projects.set(p.id, c); if (this.db) try { await this.tx('projects', 'readwrite', s => s.put(c)); } catch { } },
+  async delProject(p) {
+    this.mem.projects.delete(p.id);
+    for (const d of p.docs) this.mem.files.delete(p.id + '/' + d.id);
+    if (this.db) try { await this.tx('projects', 'readwrite', s => s.delete(p.id)); await this.tx('files', 'readwrite', s => { for (const d of p.docs) s.delete(p.id + '/' + d.id); }); } catch { }
+  },
+  async putFile(k, text) { this.mem.files.set(k, text); if (this.db) try { await this.tx('files', 'readwrite', s => s.put(text, k)); } catch { } },
+  async getFile(k) { if (this.mem.files.has(k)) return this.mem.files.get(k); if (!this.db) return null; try { const t = await this.tx('files', 'readonly', s => s.get(k)); if (t != null) this.mem.files.set(k, t); return t; } catch { return null; } },
+  async delFile(k) { this.mem.files.delete(k); if (this.db) try { await this.tx('files', 'readwrite', s => s.delete(k)); } catch { } }
+};
+
+// ---------------- Vizualizator (canvas: pan / zoom / atingere) ----------------
+class Viewer {
+  constructor(canvas, { onTap } = {}) {
+    this.cv = canvas; this.ctx = canvas.getContext('2d'); this.onTap = onTap;
+    this.dr = null; this.paths = []; this.cx = 0; this.cy = 0; this.s = 1; this.markers = []; this.dark = false; this.fitted = false;
+    this.ptrs = new Map(); this.W = 1; this.H = 1;
+    new ResizeObserver(() => this.resize()).observe(canvas);
+    canvas.addEventListener('pointerdown', e => this.down(e));
+    canvas.addEventListener('pointermove', e => this.move(e));
+    canvas.addEventListener('pointerup', e => this.up(e));
+    canvas.addEventListener('pointercancel', e => { this.ptrs.delete(e.pointerId); this.g = null; });
+    canvas.addEventListener('wheel', e => { e.preventDefault(); const r = canvas.getBoundingClientRect(); this.zoomAt(e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+    canvas.addEventListener('dblclick', () => this.fitAll());
+  }
+  resize() {
+    const r = this.cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (!r.width || !r.height) return;
+    this.W = r.width; this.H = r.height; this.cv.width = Math.round(r.width * dpr); this.cv.height = Math.round(r.height * dpr); this.dpr = dpr;
+    if (!this.fitted && this.pending) { this.fit(this.pending); }
+    this.draw();
+  }
+  setDrawing(dr) {
+    this.dr = dr; this.paths = [];
+    if (dr) {
+      const [x0, y0] = dr.bounds; this.ox = Math.round(x0); this.oy = Math.round(y0);
+      for (const [col, list] of dr.polys) {
+        const p = new Path2D();
+        for (const f of list) { p.moveTo(f[0] - this.ox, f[1] - this.oy); for (let i = 2; i < f.length; i += 2) p.lineTo(f[i] - this.ox, f[i + 1] - this.oy); }
+        this.paths.push([col, p]);
+      }
+    }
+    this.fitted = false; this.draw();
+  }
+  bounds() { const b = this.dr?.bounds; return b ? [b[0], b[1], b[2] - b[0], b[3] - b[1]] : null; }
+  fitAll() { const b = this.bounds(); if (b) this.fit(b); }
+  fit(r, margin = 0.04) {
+    if (!r) return;
+    if (this.W < 2 || this.H < 2) { this.pending = r; return; }
+    this.pending = null; const w = Math.max(r[2], 1e-3), h = Math.max(r[3], 1e-3);
+    this.s = Math.min(this.W / w, this.H / h) * (1 - 2 * margin); this.cx = r[0] + r[2] / 2; this.cy = r[1] + r[3] / 2; this.fitted = true; this.draw();
+  }
+  center(x, y) { if (!this.fitted) this.fitAll(); if (x != null && isFinite(x)) this.cx = x; if (y != null && isFinite(y)) this.cy = y; this.draw(); }
+  toScreen(x, y) { return [(x - this.cx) * this.s + this.W / 2, this.H / 2 - (y - this.cy) * this.s]; }
+  toWorld(sx, sy) { return [(sx - this.W / 2) / this.s + this.cx, (this.H / 2 - sy) / this.s + this.cy]; }
+  visibleRect() { const [x0, y1] = this.toWorld(0, 0), [x1, y0] = this.toWorld(this.W, this.H); return [x0, y0, x1 - x0, y1 - y0]; }
+  zoomAt(sx, sy, f) { const [wx, wy] = this.toWorld(sx, sy); this.s *= f; this.cx = wx - (sx - this.W / 2) / this.s; this.cy = wy + (sy - this.H / 2) / this.s; this.draw(); }
+  pos(e) { const r = this.cv.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+  down(e) {
+    this.cv.setPointerCapture?.(e.pointerId); this.ptrs.set(e.pointerId, this.pos(e));
+    if (this.ptrs.size === 1) this.tap = { p: this.pos(e), t: Date.now(), moved: false };
+    this.g = this.snapshot();
+  }
+  snapshot() {
+    const pts = [...this.ptrs.values()]; if (!pts.length) return null;
+    const mx = pts.reduce((a, p) => a + p[0], 0) / pts.length, my = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+    const dist = pts.length > 1 ? Math.hypot(pts[0][0] - pts[1][0], pts[0][1] - pts[1][1]) : 0;
+    return { mx, my, dist, s: this.s, w: this.toWorld(mx, my) };
+  }
+  move(e) {
+    if (!this.ptrs.has(e.pointerId)) return;
+    this.ptrs.set(e.pointerId, this.pos(e));
+    if (this.tap && Math.hypot(this.pos(e)[0] - this.tap.p[0], this.pos(e)[1] - this.tap.p[1]) > 8) this.tap.moved = true;
+    const g = this.g; if (!g) return;
+    const now = this.snapshot();
+    if (now.dist && g.dist) this.s = g.s * now.dist / g.dist;
+    this.cx = g.w[0] - (now.mx - this.W / 2) / this.s; this.cy = g.w[1] + (now.my - this.H / 2) / this.s;
+    this.draw();
+  }
+  up(e) {
+    this.ptrs.delete(e.pointerId);
+    if (this.tap && !this.tap.moved && Date.now() - this.tap.t < 400 && this.ptrs.size === 0 && this.onTap) {
+      const w = this.toWorld(...this.pos(e)); this.onTap(w[0], w[1]);
+    }
+    if (this.ptrs.size === 0) this.tap = null;
+    this.g = this.snapshot();
+  }
+  setMarkers(m) { this.markers = m || []; this.draw(); }
+  col(c) {
+    if (c === AX.BYFG) return this.dark ? '#f2f2f2' : '#111';
+    if (!this.dark) {
+      const m = /^#(..)(..)(..)$/.exec(c) || /rgb\((\d+),(\d+),(\d+)\)/.exec(c);
+      if (m) {
+        const v = m[0][0] === '#' ? [1, 2, 3].map(i => parseInt(m[i], 16)) : [1, 2, 3].map(i => +m[i]);
+        const lum = (0.299 * v[0] + 0.587 * v[1] + 0.114 * v[2]) / 255;
+        if (lum > 0.7) return `rgb(${v.map(x => Math.round(x * 0.6)).join(',')})`;
+      }
+    }
+    return c;
+  }
+  draw() {
+    if (this.raf) return;
+    this.raf = requestAnimationFrame(() => { this.raf = 0; this.render(); });
+  }
+  render() {
+    const c = this.ctx, dpr = this.dpr || 1, W = this.W, H = this.H;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.fillStyle = this.dark ? '#14181c' : '#fff'; c.fillRect(0, 0, W, H);
+    if (!this.dr) return;
+    const s = this.s;
+    c.setTransform(dpr * s, 0, 0, -dpr * s, dpr * (W / 2 + (this.ox - this.cx) * s), dpr * (H / 2 - (this.oy - this.cy) * s));
+    c.lineWidth = 1 / s; c.lineJoin = 'round';
+    for (const [col, p] of this.paths) { c.strokeStyle = this.col(col); c.stroke(p); }
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const [vx, vy, vw, vh] = this.visibleRect(); let n = 0;
+    for (const t of this.dr.texts) {
+      const hs = t.h * s; if (hs < 4 || hs > 400) continue;
+      const pad = t.h * t.s.length;
+      if (t.x < vx - pad || t.x > vx + vw + pad || t.y < vy - pad || t.y > vy + vh + pad) continue;
+      if (++n > 800) break;
+      const [sx, sy] = this.toScreen(t.x, t.y);
+      c.save(); c.translate(sx, sy); c.rotate(-t.rot);
+      c.font = `${hs * 1.3}px system-ui, sans-serif`; c.fillStyle = this.col(t.col);
+      c.textAlign = t.ha === 1 ? 'center' : t.ha === 2 ? 'right' : 'left';
+      c.textBaseline = t.va === 3 ? 'top' : t.va === 2 ? 'middle' : t.va === 1 ? 'bottom' : 'alphabetic';
+      const lines = t.s.split('\n'); lines.forEach((ln, i) => c.fillText(ln, 0, i * hs * 1.5));
+      c.restore();
+    }
+    for (const m of this.markers) this.marker(m);
+  }
+  marker(m) {
+    const c = this.ctx;
+    if (m.type === 'poly' && m.pts.length > 1) {
+      c.beginPath(); m.pts.forEach((p, i) => { const [x, y] = this.toScreen(p[0], p[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); });
+      c.strokeStyle = 'rgba(230,40,40,.75)'; c.lineWidth = 2.5; c.stroke();
+    } else if (m.type === 'pos') {
+      const [x, y] = this.toScreen(m.x, m.y), r = Math.max((m.acc || 0) * this.s, 9);
+      c.beginPath(); c.arc(x, y, r, 0, 7); c.fillStyle = 'rgba(30,110,255,.15)'; c.fill(); c.strokeStyle = 'rgba(30,110,255,.6)'; c.lineWidth = 1; c.stroke();
+      c.beginPath(); c.arc(x, y, 8, 0, 7); c.fillStyle = '#fff'; c.fill(); c.beginPath(); c.arc(x, y, 5.5, 0, 7); c.fillStyle = '#1e6eff'; c.fill();
+    } else if (m.type === 'pin') {
+      const [x, y] = this.toScreen(m.x, m.y);
+      c.strokeStyle = '#ff8a00'; c.lineWidth = 3; c.beginPath(); c.moveTo(x - 12, y); c.lineTo(x + 12, y); c.moveTo(x, y - 12); c.lineTo(x, y + 12); c.stroke();
+      c.lineWidth = 2; c.beginPath(); c.arc(x, y, 7, 0, 7); c.stroke();
+    } else if (m.type === 'vline') {
+      const [x] = this.toScreen(m.x, 0); c.setLineDash([8, 5]); c.strokeStyle = '#e62828'; c.lineWidth = 2;
+      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, this.H); c.stroke(); c.setLineDash([]);
+    } else if (m.type === 'rect') {
+      const [x0, y0] = this.toScreen(m.r[0], m.r[1] + m.r[3]), [x1, y1] = this.toScreen(m.r[0] + m.r[2], m.r[1]);
+      c.strokeStyle = '#16a34a'; c.lineWidth = 2; c.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    }
+  }
+}
+
+// ---------------- Stare aplicație ----------------
+const S = {
+  projects: [], p: null, drawings: new Map(), point: null, acc: null, so: null, source: 'manual', raw: [], watch: null,
+  pane: 'tip', planDoc: null, follow: true, dark: false, crossOverride: null, typChoice: 0, keys: {}
+};
+const toast = (msg, ms = 3200) => { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, ms); };
+const save = () => S.p && Store.saveProject(S.p);
+const doc = id => S.p?.docs.find(d => d.id === id);
+const docsOf = role => S.p ? S.p.docs.filter(d => d.role === role) : [];
+
+async function drawingOf(d) {
+  if (S.drawings.has(d.id)) return S.drawings.get(d.id);
+  const text = await Store.getFile(S.p.id + '/' + d.id);
+  if (text == null) throw new Error('Fișierul „' + d.name + '” nu mai e în memoria browserului. Importă-l din nou.');
+  const dr = AX.readDXF(text, new Set(d.hidden || []));
+  S.drawings.set(d.id, dr); return dr;
+}
+
+// ---------------- Ecrane ----------------
+function show(screen) {
+  for (const el of document.querySelectorAll('section[data-screen]')) el.hidden = el.dataset.screen !== screen;
+  document.body.dataset.view = screen;
+  if (screen === 'home') renderHome();
+  if (screen === 'setup') renderSetup();
+  if (screen === 'field') enterField();
+}
+
+async function renderHome() {
+  S.projects = (await Store.allProjects()).sort((a, b) => b.created - a.created);
+  $('#projlist').innerHTML = S.projects.length ? S.projects.map(p => `
+    <li><button class="proj" data-open="${p.id}"><b>${esc(p.name)}</b>
+      <span>${p.alignment ? 'ax ' + Math.round(p.alignment.sta.at(-1) - p.alignment.staStart) + ' m • ' : ''}${p.docs.length} fișiere • ${p.typicals.length} profiluri tip • ${p.crosses.length} transversale</span></button>
+      <button class="ghost danger" data-del="${p.id}" aria-label="Șterge">Șterge</button></li>`).join('')
+    : `<li class="empty">Niciun proiect încă. Creează unul și importă fișierele din Civil 3D (LandXML + DXF).</li>`;
+  $('#storewarn').hidden = Store.ok;
+}
+
+async function openProject(id) {
+  S.p = S.projects.find(p => p.id === id); S.drawings.clear(); S.point = null; S.so = null; S.raw = [];
+  S.planDoc = docsOf('plan')[0]?.id || null; show('setup');
+}
+
+// ---------------- Setări proiect ----------------
+function renderSetup() {
+  const p = S.p; if (!p) return show('home');
+  $('#setup-title').textContent = p.name;
+  const al = p.alignment;
+  $('#s-ax').innerHTML = al ? `<b>${esc(al.name)}</b><span class="mono">km ${AX.kmFmt(al.staStart)} – ${AX.kmFmt(al.sta.at(-1))} • ${Math.round(al.sta.at(-1) - al.staStart)} m</span>` : `<span class="muted">Niciun ax. Importă un fișier LandXML exportat din Civil 3D.</span>`;
+  $('#s-docs').innerHTML = p.docs.length ? p.docs.map(d => `
+    <li><div><b>${esc(d.name)}</b><span class="muted">${ROLES[d.role]}${d.role === 'longitudinal' ? (d.long ? ' • calibrat' : ' • necalibrat') : ''}${d.role === 'transversale' ? ' • ' + p.crosses.filter(c => c.docId === d.id).length + ' secțiuni' : ''}</span></div>
+      <select data-role="${d.id}">${['plan', 'longitudinal', 'tipuri', 'transversale'].map(r => `<option value="${r}" ${r === d.role ? 'selected' : ''}>${ROLES[r]}</option>`).join('')}</select>
+      <button class="ghost" data-view="${d.id}">Vezi</button><button class="ghost" data-layers="${d.id}">Layere</button><button class="ghost danger" data-rmdoc="${d.id}">Șterge</button></li>`).join('')
+    : `<li class="empty">Niciun fișier. Apasă „Importă fișiere” și alege toate DXF-urile proiectului și LandXML-ul axului.</li>`;
+  const tips = docsOf('tipuri');
+  $('#s-typ').innerHTML = (p.typicals.map(t => `<li><input data-tname="${t.id}" value="${esc(t.name)}" aria-label="Nume profil tip"><button class="ghost" data-tframe="${t.id}">Reîncadrează</button><button class="ghost danger" data-trm="${t.id}">Șterge</button></li>`).join('') || `<li class="empty">Niciun profil tip definit.</li>`)
+    + (tips.length ? tips.map(d => `<li><button data-tadd="${d.id}">+ Adaugă profil tip din „${esc(d.name)}”</button></li>`).join('') : `<li class="muted">Importă întâi un DXF cu profilurile tip.</li>`);
+  const opts = id => `<option value="">—</option>` + p.typicals.map(t => `<option value="${t.id}" ${t.id === id ? 'selected' : ''}>${esc(t.name)}</option>`).join('');
+  $('#s-int').innerHTML = p.intervals.map(iv => `<tr>
+    <td><input class="mono" data-ivf="${iv.id}" value="${AX.kmFmt(iv.kmFrom)}" inputmode="decimal" aria-label="de la km"></td>
+    <td><input class="mono" data-ivt="${iv.id}" value="${AX.kmFmt(iv.kmTo)}" inputmode="decimal" aria-label="până la km"></td>
+    <td><select data-ivs="${iv.id}">${Object.entries(SIDES).map(([k, v]) => `<option value="${k}" ${k === iv.side ? 'selected' : ''}>${v}</option>`).join('')}</select></td>
+    <td><select data-ivp="${iv.id}">${opts(iv.typId)}</select></td>
+    <td><input data-ivn="${iv.id}" value="${esc(iv.note)}" placeholder="Observații" aria-label="Observații"></td>
+    <td><button class="ghost danger" data-ivrm="${iv.id}" aria-label="Șterge rândul">✕</button></td></tr>`).join('');
+  $('#s-gaps').textContent = gapsText();
+  const tr = docsOf('transversale');
+  $('#s-cross').innerHTML = tr.length ? tr.map(d => `<li><div><b>${esc(d.name)}</b><span class="muted">${p.crosses.filter(c => c.docId === d.id).length} secțiuni</span></div>
+     <button class="ghost" data-cdet="${d.id}">Detectează din nou</button><button class="ghost" data-cadj="${d.id}">Ajustează caseta</button><button class="ghost" data-cman="${d.id}">Adaugă manual</button></li>`).join('')
+    : `<li class="muted">Importă un DXF cu profilurile transversale.</li>`;
+  const lo = docsOf('longitudinal');
+  $('#s-long').innerHTML = lo.length ? lo.map(d => `<li><div><b>${esc(d.name)}</b><span class="muted">${d.long ? 'km ' + AX.kmFmt(d.long.kmFrom, 0) + ' – ' + AX.kmFmt(d.long.kmTo, 0) : 'necalibrat — etichetele de km nu au fost găsite'}</span></div><button class="ghost" data-ldet="${d.id}">Detectează din nou</button></li>`).join('')
+    : `<li class="muted">Importă profilul longitudinal (DXF).</li>`;
+  $('#s-shift').textContent = `ΔX = ${p.shift.n.toFixed(2)} m, ΔY = ${p.shift.e.toFixed(2)} m`;
+}
+
+function gapsText() {
+  const p = S.p, al = p.alignment; if (!al || !p.intervals.length) return '';
+  const gaps = []; let g0 = null, k = al.staStart; const end = al.sta.at(-1);
+  for (; k <= end; k += 5) { const cov = p.intervals.some(iv => k >= Math.min(iv.kmFrom, iv.kmTo) - 1e-6 && k <= Math.max(iv.kmFrom, iv.kmTo) + 1e-6); if (!cov && g0 == null) g0 = k; if (cov && g0 != null) { gaps.push(AX.kmFmt(g0, 0) + ' – ' + AX.kmFmt(k, 0)); g0 = null; } }
+  if (g0 != null) gaps.push(AX.kmFmt(g0, 0) + ' – ' + AX.kmFmt(end, 0));
+  return gaps.length ? 'Fără profil tip: ' + gaps.slice(0, 8).join(', ') : 'Tot axul are profil tip.';
+}
+
+// ---------------- Import fișiere ----------------
+async function readText(file) {
+  const buf = await file.arrayBuffer();
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { return new TextDecoder('windows-1250').decode(buf); }
+}
+let pendingFiles = [];
+function startImport(files) {
+  pendingFiles = [...files].map(f => ({ f, role: AX.classify(f.name) }));
+  if (!pendingFiles.length) return;
+  $('#imp-list').innerHTML = pendingFiles.map((x, i) => `<li><span>${esc(x.f.name)}</span><select data-imp="${i}">${Object.entries(ROLES).map(([k, v]) => `<option value="${k}" ${k === x.role ? 'selected' : ''}>${v}</option>`).join('')}</select></li>`).join('');
+  $('#dlg-import').showModal();
+}
+async function runImport() {
+  $('#dlg-import').close();
+  const p = S.p, done = [], errs = [];
+  for (const x of pendingFiles) {
+    if (x.role === 'skip') continue;
+    try {
+      const text = await readText(x.f);
+      if (x.role === 'ax') {
+        const al = AX.readLandXML(text); if (!al.length) throw new Error('nu conține niciun ax (Alignment)');
+        p.alignment = al[0]; done.push('ax');
+      } else {
+        const dr = AX.readDXF(text);
+        const d = { id: uid(), name: x.f.name.replace(/\.[^.]+$/, ''), role: x.role, hidden: [] };
+        await Store.putFile(p.id + '/' + d.id, text); p.docs.push(d); S.drawings.set(d.id, dr); done.push(ROLES[x.role].toLowerCase());
+        if (x.role === 'longitudinal') autoLong(d, dr);
+        if (x.role === 'transversale') autoCross(d, dr);
+        if (x.role === 'plan' && !S.planDoc) S.planDoc = d.id;
+      }
+    } catch (e) { errs.push(x.f.name + ': ' + e.message); }
+  }
+  await save(); renderSetup();
+  toast((done.length ? 'Importat: ' + done.join(', ') : 'Nimic importat') + (errs.length ? ' — erori: ' + errs.join('; ') : ''), 6000);
+}
+function autoLong(d, dr) { const r = AX.autoLongitudinal(AX.kmLabels(dr)); d.long = r || null; }
+function autoCross(d, dr, tpl) {
+  const labels = AX.kmLabels(dr); S.p.crosses = S.p.crosses.filter(c => c.docId !== d.id);
+  if (!labels.length) return 0;
+  const t = tpl || S.p.crossTpl[d.id] || AX.defaultTemplate(labels); S.p.crossTpl[d.id] = t;
+  for (const c of AX.crossSections(labels, t)) S.p.crosses.push({ id: uid(), docId: d.id, km: c.km, rect: c.rect });
+  S.p.crosses.sort((a, b) => a.km - b.km); return labels.length;
+}
+
+// ---------------- Dialog încadrare zonă ----------------
+let zoneViewer = null, zoneCb = null;
+async function frameZone(d, title, initRect, extra, cb, opts = {}) {
+  $('#zone-title').textContent = title; $('#zone-name').hidden = !opts.name; $('#zone-name').value = opts.name || '';
+  $('#zone-km').hidden = !opts.km; $('#zone-km').value = opts.kmVal || '';
+  $('#dlg-zone').showModal();
+  if (!zoneViewer) zoneViewer = new Viewer($('#zone-cv'));
+  zoneViewer.dark = S.dark;
+  try { zoneViewer.setDrawing(await drawingOf(d)); } catch (e) { toast(e.message); $('#dlg-zone').close(); return; }
+  zoneViewer.resize(); initRect ? zoneViewer.fit(initRect, 0.02) : zoneViewer.fitAll();
+  zoneViewer.setMarkers(extra || []); zoneCb = cb;
+}
+
+// ---------------- Pe teren ----------------
+let planV = null, sideV = null;
+function enterField() {
+  if (!planV) {
+    planV = new Viewer($('#plan-cv'), { onTap: (x, y) => { setSource('manual'); setPoint([x, y], null); } });
+    sideV = new Viewer($('#side-cv'));
+  }
+  planV.dark = sideV.dark = S.dark;
+  $('#f-title').textContent = S.p.name;
+  const plans = docsOf('plan');
+  $('#plan-sel').innerHTML = plans.map(d => `<option value="${d.id}" ${d.id === S.planDoc ? 'selected' : ''}>${esc(d.name)}</option>`).join('');
+  $('#plan-sel').hidden = plans.length < 2;
+  S.keys = {}; loadPlan(); updateField();
+}
+async function loadPlan() {
+  const d = doc(S.planDoc) || docsOf('plan')[0];
+  $('#plan-empty').hidden = !!(d || S.p.alignment);
+  if (d) { try { planV.setDrawing(await drawingOf(d)); } catch (e) { toast(e.message); } }
+  else if (S.p.alignment) {
+    // fără plan: desenează doar axul
+    const pts = S.p.alignment.pts, f = new Float64Array(pts.flat());
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    planV.setDrawing({ polys: new Map([['#e62828', [f]]]), texts: [], bounds: [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)] });
+  }
+  planV.resize(); planV.fitAll(); refreshPlanMarkers();
+}
+function refreshPlanMarkers() {
+  const m = [];
+  if (S.p.alignment && doc(S.planDoc)) m.push({ type: 'poly', pts: S.p.alignment.pts });
+  if (S.point) m.push(S.source === 'manual' ? { type: 'pin', x: S.point[0], y: S.point[1] } : { type: 'pos', x: S.point[0], y: S.point[1], acc: S.acc });
+  planV.setMarkers(m);
+}
+function setPoint(p, acc) {
+  S.point = p; S.acc = acc; S.so = S.p.alignment ? AX.stationOffset(S.p.alignment, p) : null; S.crossOverride = null;
+  if (S.follow && S.source !== 'manual') planV.center(p[0], p[1]);
+  updateField();
+}
+function updateField() {
+  const so = S.so;
+  $('#km').textContent = so ? 'km ' + AX.kmFmt(so.station) : '—';
+  $('#off').textContent = so ? `${Math.abs(so.offset).toFixed(2)} m ${so.offset >= 0 ? 'stânga' : 'dreapta'}${so.outside ? ' • în afara axului' : ''}` : (S.p.alignment ? (S.source === 'manual' ? 'Atinge pe plan sau scrie un km' : 'Aștept poziția GPS…') : 'Importă axul (LandXML)');
+  $('#xy').textContent = S.point ? `X ${S.point[1].toFixed(2)}  Y ${S.point[0].toFixed(2)}` : '';
+  $('#acc').textContent = S.source === 'gps' && S.acc != null ? `±${Math.round(S.acc)} m` : '';
+  refreshPlanMarkers(); renderSide();
+}
+
+async function renderSide() {
+  const pane = matchMedia('(min-width: 900px)').matches ? S.pane : (S.pane === 'plan' ? 'plan' : S.pane);
+  document.body.dataset.pane = pane;
+  for (const b of document.querySelectorAll('[data-pane]')) b.setAttribute('aria-selected', b.dataset.pane === pane);
+  const info = $('#side-info'), so = S.so, p = S.p;
+  if (pane === 'plan') return;
+  const showDoc = async (d, key, act) => {
+    if (S.keys.side !== key) { S.keys.side = key; try { sideV.setDrawing(await drawingOf(d)); sideV.resize(); act(true); } catch (e) { info.innerHTML = esc(e.message); } }
+    else act(false);
+  };
+  $('#side-cv').hidden = false;
+  if (!so) { info.innerHTML = `<p class="muted">Fără poziție. Atinge pe plan, scrie un km sau pornește GPS-ul.</p>`; $('#side-cv').hidden = true; return; }
+  if (pane === 'tip') {
+    const ivs = p.intervals.filter(iv => so.station >= Math.min(iv.kmFrom, iv.kmTo) - 1e-6 && so.station <= Math.max(iv.kmFrom, iv.kmTo) + 1e-6);
+    const onSide = iv => iv.side === 'ambele' || (iv.side === 'stanga' ? so.offset >= 0 : so.offset <= 0);
+    ivs.sort((a, b) => onSide(b) - onSide(a));
+    if (!ivs.length) { info.innerHTML = `<p class="muted">Niciun profil tip la km ${AX.kmFmt(so.station, 0)}. Completează tabelul de intervale.</p>`; $('#side-cv').hidden = true; return; }
+    const sel = Math.min(S.typChoice, ivs.length - 1), iv = ivs[sel], t = p.typicals.find(x => x.id === iv.typId);
+    info.innerHTML = (ivs.length > 1 ? `<div class="seg">${ivs.map((v, i) => `<button data-typc="${i}" aria-pressed="${i === sel}">${esc(p.typicals.find(x => x.id === v.typId)?.name || '?')} · ${SIDES[v.side]}</button>`).join('')}</div>` : '')
+      + `<p><b>${esc(t?.name || 'Profil nealocat')}</b> <span class="muted mono">km ${AX.kmFmt(iv.kmFrom, 0)} – ${AX.kmFmt(iv.kmTo, 0)} • ${SIDES[iv.side]}</span>${iv.note ? `<br>${esc(iv.note)}` : ''}</p>`;
+    if (!t || !doc(t.docId)) { $('#side-cv').hidden = true; return; }
+    await showDoc(doc(t.docId), 'typ' + t.id, () => { if (S.keys.fit !== t.id) { S.keys.fit = t.id; sideV.fit(t.rect, 0.02); } sideV.setMarkers([]); });
+  } else if (pane === 'trans') {
+    if (!p.crosses.length) { info.innerHTML = `<p class="muted">Nicio secțiune transversală. Importă transversalele (DXF).</p>`; $('#side-cv').hidden = true; return; }
+    const auto = p.crosses.reduce((b, c) => Math.abs(c.km - so.station) < Math.abs(b.km - so.station) ? c : b);
+    const cs = p.crosses.find(c => c.id === S.crossOverride) || auto;
+    info.innerHTML = `<div class="row"><button class="ghost" data-cstep="-1" aria-label="Secțiunea anterioară">◀</button><b class="mono">km ${AX.kmFmt(cs.km)}</b><button class="ghost" data-cstep="1" aria-label="Secțiunea următoare">▶</button>
+      <span class="muted mono">Δ ${(cs.km - so.station).toFixed(1)} m</span>${S.crossOverride ? '<button class="ghost" data-cauto>Automat</button>' : ''}</div>`;
+    await showDoc(doc(cs.docId), 'cr' + cs.docId, () => { if (S.keys.fit !== cs.id) { S.keys.fit = cs.id; sideV.fit(cs.rect, 0.02); } sideV.setMarkers([]); });
+  } else if (pane === 'long') {
+    const d = docsOf('longitudinal').find(d => d.long && so.station >= d.long.kmFrom - 0.5 && so.station <= d.long.kmTo + 0.5) || docsOf('longitudinal').find(d => d.long);
+    if (!d) { info.innerHTML = `<p class="muted">${docsOf('longitudinal').length ? 'Longitudinalul nu e calibrat (etichetele de km nu au fost găsite).' : 'Importă profilul longitudinal (DXF).'}</p>`; $('#side-cv').hidden = true; return; }
+    const x = d.long.m * so.station + d.long.q, bucket = Math.round(so.station / 10);
+    info.innerHTML = `<p class="muted mono">Linia roșie: km ${AX.kmFmt(so.station)}</p>`;
+    await showDoc(d, 'lo' + d.id, first => { if (first || S.keys.fit !== 'lo' + bucket) { S.keys.fit = 'lo' + bucket; sideV.center(x, null); } sideV.setMarkers([{ type: 'vline', x }]); });
+  }
+}
+
+// ---------------- GPS ----------------
+function setSource(src) {
+  S.source = src;
+  for (const b of document.querySelectorAll('[data-src]')) b.setAttribute('aria-pressed', b.dataset.src === src);
+  if (src === 'gps') {
+    if (!('geolocation' in navigator)) { toast('Browserul nu oferă GPS.'); return setSource('manual'); }
+    if (S.watch == null) S.watch = navigator.geolocation.watchPosition(pos => {
+      const r = AX.fromWGS84(pos.coords.latitude, pos.coords.longitude); S.raw.push([r.e, r.n]); if (S.raw.length > 30) S.raw.shift();
+      if (S.source === 'gps') setPoint([r.e + S.p.shift.e, r.n + S.p.shift.n], pos.coords.accuracy);
+    }, err => {
+      toast(err.code === 1 ? 'Accesul la locație e blocat. În pagina din chat GPS-ul nu e permis — folosește versiunea instalată (GitHub Pages).' : 'GPS: ' + err.message, 7000);
+      stopGPS(); setSource('manual');
+    }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
+  } else stopGPS();
+  updateField();
+}
+function stopGPS() { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); S.watch = null; }
+
+// ---------------- Evenimente ----------------
+document.addEventListener('click', async e => {
+  const t = e.target.closest('button, [data-open]'); if (!t) return;
+  const ds = t.dataset, p = S.p;
+  if (ds.open) return openProject(ds.open);
+  if (ds.del) { const pr = S.projects.find(x => x.id === ds.del); if (pr && t.dataset.confirm) { await Store.delProject(pr); renderHome(); } else { t.dataset.confirm = 1; t.textContent = 'Sigur? Apasă din nou'; } return; }
+  if (t.id === 'btn-new') { const name = $('#newname').value.trim() || 'Proiect nou'; const pr = { id: uid(), name, created: Date.now(), alignment: null, docs: [], typicals: [], intervals: [], crosses: [], crossTpl: {}, shift: { e: 0, n: 0 } }; await Store.saveProject(pr); $('#newname').value = ''; S.projects.push(pr); return openProject(pr.id); }
+  if (t.id === 'btn-home') { stopGPS(); S.source = 'manual'; return show('home'); }
+  if (t.id === 'btn-setup') { stopGPS(); setSource('manual'); return show('setup'); }
+  if (t.id === 'btn-field') return show('field');
+  if (t.id === 'btn-import') return $('#file-in').click();
+  if (t.id === 'imp-go') return runImport();
+  if (t.id === 'imp-cancel') return $('#dlg-import').close();
+  if (ds.rmdoc) { if (!t.dataset.confirm) { t.dataset.confirm = 1; t.textContent = 'Sigur?'; return; } const d = doc(ds.rmdoc); p.docs = p.docs.filter(x => x !== d); p.typicals = p.typicals.filter(x => x.docId !== d.id); p.crosses = p.crosses.filter(x => x.docId !== d.id); delete p.crossTpl[d.id]; await Store.delFile(p.id + '/' + d.id); S.drawings.delete(d.id); if (S.planDoc === d.id) S.planDoc = docsOf('plan')[0]?.id || null; await save(); return renderSetup(); }
+  if (ds.view) { const d = doc(ds.view); return frameZone(d, d.name, null, d.role === 'plan' && p.alignment ? [{ type: 'poly', pts: p.alignment.pts }] : [], null); }
+  if (ds.layers) return openLayers(doc(ds.layers));
+  if (ds.tadd) { const d = doc(ds.tadd); return frameZone(d, 'Profil tip nou — încadrează desenul', null, [], async (rect, name) => { p.typicals.push({ id: uid(), name: name || 'PT' + (p.typicals.length + 1), docId: d.id, rect }); await save(); renderSetup(); }, { name: 'PT' + (p.typicals.length + 1) }); }
+  if (ds.tframe) { const ty = p.typicals.find(x => x.id === ds.tframe); return frameZone(doc(ty.docId), ty.name, ty.rect, [], async rect => { ty.rect = rect; await save(); }); }
+  if (ds.trm) { p.typicals = p.typicals.filter(x => x.id !== ds.trm); await save(); return renderSetup(); }
+  if (t.id === 'iv-add') { const al = p.alignment, st = p.intervals.length ? Math.max(...p.intervals.map(i => i.kmTo)) : (al?.staStart || 0); p.intervals.push({ id: uid(), kmFrom: st, kmTo: al ? Math.min(st + 100, al.sta.at(-1)) : st + 100, side: 'ambele', typId: p.typicals[0]?.id || '', note: '' }); await save(); return renderSetup(); }
+  if (ds.ivrm) { p.intervals = p.intervals.filter(x => x.id !== ds.ivrm); await save(); return renderSetup(); }
+  if (ds.cdet) { const d = doc(ds.cdet); const n = autoCross(d, await drawingOf(d)); await save(); renderSetup(); return toast(n ? `${p.crosses.filter(c => c.docId === d.id).length} secțiuni detectate.` : 'Nu am găsit etichete de km (ex. „km 0+125.00”).'); }
+  if (ds.cadj) {
+    const d = doc(ds.cadj), dr = await drawingOf(d), labels = AX.dedupe(AX.kmLabels(dr)).sort((a, b) => a.km - b.km);
+    if (!labels.length) return toast('Nu am găsit etichete de km.');
+    const l = labels[0], tp = p.crossTpl[d.id] || AX.defaultTemplate(labels), r = [l.x + tp.dx, l.y + tp.dy, tp.w, tp.h];
+    return frameZone(d, `Încadrează secțiunea km ${AX.kmFmt(l.km)} — se aplică la toate`, [r[0] - r[2] * .3, r[1] - r[3] * .3, r[2] * 1.6, r[3] * 1.6], [{ type: 'rect', r }, { type: 'pin', x: l.x, y: l.y }],
+      async rect => { autoCross(d, dr, { dx: rect[0] - l.x, dy: rect[1] - l.y, w: rect[2], h: rect[3] }); await save(); renderSetup(); toast('Caseta a fost aplicată la toate secțiunile.'); });
+  }
+  if (ds.cman) { const d = doc(ds.cman); return frameZone(d, 'Secțiune nouă — încadreaz-o și scrie km-ul', null, [], async (rect, _n, km) => { if (km == null) return toast('Km invalid.'); p.crosses.push({ id: uid(), docId: d.id, km, rect }); p.crosses.sort((a, b) => a.km - b.km); await save(); renderSetup(); }, { km: true }); }
+  if (ds.ldet) { const d = doc(ds.ldet); autoLong(d, await drawingOf(d)); await save(); renderSetup(); return toast(d.long ? 'Longitudinal calibrat.' : 'Nu am găsit etichete de km pe longitudinal.'); }
+  if (t.id === 'zone-save') { if (zoneCb) { const km = $('#zone-km').hidden ? null : AX.kmParse($('#zone-km').value); zoneCb(zoneViewer.visibleRect(), $('#zone-name').value.trim(), km); } zoneCb = null; return $('#dlg-zone').close(); }
+  if (t.id === 'zone-close') { zoneCb = null; return $('#dlg-zone').close(); }
+  if (t.id === 'zone-fit') return zoneViewer.fitAll();
+  if (ds.src) return setSource(ds.src);
+  if (ds.pane) { S.pane = ds.pane; S.keys.side = null; S.keys.fit = null; renderSide(); if (ds.pane === 'plan') { planV.resize(); } return; }
+  if (ds.typc) { S.typChoice = +ds.typc; S.keys.fit = null; return renderSide(); }
+  if (ds.cstep) { const cs = p.crosses.find(c => c.id === S.crossOverride) || p.crosses.reduce((b, c) => Math.abs(c.km - S.so.station) < Math.abs(b.km - S.so.station) ? c : b); const i = p.crosses.indexOf(cs) + +ds.cstep; if (i >= 0 && i < p.crosses.length) { S.crossOverride = p.crosses[i].id; renderSide(); } return; }
+  if (ds.cauto !== undefined) { S.crossOverride = null; return renderSide(); }
+  if (t.id === 'btn-goto') return gotoKm();
+  if (t.id === 'btn-follow') { S.follow = !S.follow; t.setAttribute('aria-pressed', S.follow); if (S.follow && S.point) planV.center(S.point[0], S.point[1]); return; }
+  if (t.id === 'btn-dark') { S.dark = !S.dark; t.setAttribute('aria-pressed', S.dark); for (const v of [planV, sideV, zoneViewer]) if (v) { v.dark = S.dark; v.draw(); } return; }
+  if (t.id === 'btn-fitplan') return planV.fitAll();
+  if (t.id === 'btn-cal') { $('#cal-info').textContent = `Poziții GPS recente: ${S.raw.length}. Corecția curentă: ΔX = ${p.shift.n.toFixed(2)} m, ΔY = ${p.shift.e.toFixed(2)} m.`; if (S.source === 'manual' && S.point) { $('#cal-x').value = S.point[1].toFixed(3); $('#cal-y').value = S.point[0].toFixed(3); } return $('#dlg-cal').showModal(); }
+  if (t.id === 'cal-do') {
+    const X = parseFloat($('#cal-x').value.replace(',', '.')), Y = parseFloat($('#cal-y').value.replace(',', '.'));
+    if (!isFinite(X) || !isFinite(Y)) return toast('Introdu coordonatele punctului.');
+    const r = S.raw.slice(-10); if (!r.length) return toast('Nu am poziții GPS. Pornește GPS-ul și stai pe punct câteva secunde.');
+    const me = r.reduce((a, q) => a + q[0], 0) / r.length, mn = r.reduce((a, q) => a + q[1], 0) / r.length;
+    p.shift = { e: Y - me, n: X - mn }; await save(); $('#dlg-cal').close(); return toast(`Corecție: ΔX = ${p.shift.n.toFixed(2)} m, ΔY = ${p.shift.e.toFixed(2)} m`);
+  }
+  if (t.id === 'cal-reset') { p.shift = { e: 0, n: 0 }; await save(); $('#dlg-cal').close(); return toast('Corecția a fost resetată.'); }
+  if (t.id === 'cal-close') return $('#dlg-cal').close();
+  if (t.id === 'lay-close') return $('#dlg-layers').close();
+});
+
+function gotoKm() {
+  const km = AX.kmParse($('#goto').value), al = S.p.alignment; if (km == null || !al) return toast(al ? 'Km invalid.' : 'Nu există ax.');
+  const pt = AX.pointAt(al, km); setSource('manual'); setPoint(pt, null); planV.center(pt[0], pt[1]);
+}
+$('#goto').addEventListener('keydown', e => { if (e.key === 'Enter') gotoKm(); });
+$('#file-in').addEventListener('change', e => { startImport(e.target.files); e.target.value = ''; });
+$('#plan-sel').addEventListener('change', e => { S.planDoc = e.target.value; loadPlan(); });
+document.addEventListener('change', async e => {
+  const t = e.target, ds = t.dataset, p = S.p; if (!p && !ds.imp) return;
+  if (ds.imp) { pendingFiles[+ds.imp].role = t.value; return; }
+  if (ds.role) { const d = doc(ds.role); d.role = t.value; if (d.role === 'longitudinal') autoLong(d, await drawingOf(d)); if (d.role === 'transversale') autoCross(d, await drawingOf(d)); await save(); return renderSetup(); }
+  if (ds.tname) { p.typicals.find(x => x.id === ds.tname).name = t.value; await save(); return renderSetup(); }
+  const iv = p.intervals.find(x => x.id === (ds.ivf || ds.ivt || ds.ivs || ds.ivp || ds.ivn)); if (!iv) return;
+  if (ds.ivf) { const v = AX.kmParse(t.value); if (v != null) iv.kmFrom = v; }
+  if (ds.ivt) { const v = AX.kmParse(t.value); if (v != null) iv.kmTo = v; }
+  if (ds.ivs) iv.side = t.value; if (ds.ivp) iv.typId = t.value; if (ds.ivn) iv.note = t.value;
+  await save(); renderSetup();
+});
+
+// ---------------- Layere ----------------
+let layDoc = null;
+async function openLayers(d) {
+  layDoc = d; const dr = await drawingOf(d).catch(e => { toast(e.message); return null; }); if (!dr) return;
+  const names = [...new Set([...(dr.layers || []), ...(d.hidden || [])])];
+  $('#lay-list').innerHTML = names.map(n => `<li><label><input type="checkbox" data-lay="${esc(n)}" ${(d.hidden || []).includes(n) ? '' : 'checked'}> ${esc(n)}</label></li>`).join('') || '<li class="muted">Fișierul nu are tabel de layere.</li>';
+  $('#dlg-layers').showModal();
+}
+$('#lay-apply').addEventListener('click', async () => {
+  const d = layDoc; d.hidden = [...document.querySelectorAll('[data-lay]')].filter(c => !c.checked).map(c => c.dataset.lay);
+  S.drawings.delete(d.id); await save(); $('#dlg-layers').close(); toast('Layerele au fost aplicate.');
+});
+
+window.addEventListener('resize', () => { if (document.body.dataset.view === 'field') renderSide(); });
+
+// ---------------- Pornire ----------------
+(async () => {
+  await Store.open();
+  if ('serviceWorker' in navigator && location.protocol === 'https:' && !location.hostname.endsWith('claude.ai') && !location.hostname.includes('claudeusercontent')) {
+    navigator.serviceWorker.register('sw.js').catch(() => { });
+  }
+  show('home');
+})();
+}
+</script>
+</body>
+</html>
