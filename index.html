@@ -676,16 +676,39 @@ const AX = (() => {
     for (const i of [lo - 1, lo]) if (i >= 0 && i < xs.length && Math.abs(xs[i] - x) <= tol && (best == null || Math.abs(xs[i] - x) < Math.abs(best - x))) best = xs[i];
     return best ?? x;
   }
-  function rowNumbers(T, nums, a, vx) {
-    const h = a.h || 0.2;
+  function horizontalsNear(dr, x, y0, y1) {
+    // segmente orizontale între y0 și y1; întoarce [{y, a, b}] cu intervalul care conține x (segmentele colineare se unesc)
+    const segs = [];
+    for (const list of dr.polys.values()) for (const f of list) {
+      for (let i = 0; i + 3 < f.length; i += 2) {
+        const xa = f[i], ya = f[i + 1], xb = f[i + 2], yb = f[i + 3];
+        if (Math.abs(yb - ya) < 1e-6 && ya > y0 && ya < y1 && Math.abs(xb - xa) > 1e-6) segs.push({ y: ya, a: Math.min(xa, xb), b: Math.max(xa, xb) });
+      }
+    }
+    const byY = new Map();
+    for (const g of segs) { const k = Math.round(g.y * 1000); (byY.get(k) || byY.set(k, []).get(k)).push(g); }
+    const out = [];
+    for (const list of byY.values()) {
+      list.sort((p, q) => p.a - q.a);
+      let cur = null;
+      for (const g of list) {
+        if (cur && g.a <= cur.b + 1e-3) cur.b = Math.max(cur.b, g.b);
+        else { if (cur && cur.a <= x && cur.b >= x) out.push(cur); cur = { y: g.y, a: g.a, b: g.b }; }
+      }
+      if (cur && cur.a <= x && cur.b >= x) out.push(cur);
+    }
+    return out;
+  }
+  function rowNumbers(T, nums, a, vx, opt = {}) {
+    const h = a.h || 0.2, limit = opt.limit ?? Infinity, monotone = opt.monotone !== false;
     const nextRow = T.filter(t => t !== a && BANDT.test(t.s) && Math.abs(t.cx - a.cx) < h * 10 && t.cy > a.cy + h * 0.5).map(t => t.cy - a.cy);
     const tol = nextRow.length ? Math.min(...nextRow) * 0.45 : h * 2.5;
-    const row = nums.filter(n => n.cx > a.cx && (Math.abs(Math.min(n.cy, n.cy - n.s.length * n.h * 0.35 * Math.sign(Math.sin(n.rot))) - a.cy) < tol || Math.abs(n.cy - a.cy) < tol))
+    const row = nums.filter(n => n.cx > a.cx && n.cx < limit && (Math.abs(Math.min(n.cy, n.cy - n.s.length * n.h * 0.35 * Math.sign(Math.sin(n.rot))) - a.cy) < tol || Math.abs(n.cy - a.cy) < tol))
       .sort((p, q) => p.cx - q.cx);
     const pts = []; let lastX = a.cx;
     for (const n of row) {
       const d = parseFloat(n.s.replace(',', '.'));
-      if (pts.length && d <= pts[pts.length - 1].d) break;
+      if (monotone && pts.length && d <= pts[pts.length - 1].d) break;
       if (n.cx - lastX > h * 150) break;
       // poziția exactă: linia verticală a grilei din dreptul textului (dacă există)
       pts.push({ d, x: vx ? snap(vx, n.x, h * 1.5) : n.cx }); lastX = n.cx;
@@ -731,14 +754,23 @@ const AX = (() => {
     const out = [];
     for (const a of anchors) {
       const h = a.h || 0.2;
-      const pts = rowNumbers(T, nums, a, verticalsAt(dr, a.cy));
-      const zero = pts.filter(p => Math.abs(p.d) < 1e-6).sort((p, q) => Math.abs(p.x - a.cx) - Math.abs(q.x - a.cx))[0];
+      // toate numerele rândului, până la secțiunea vecină din dreapta (lățimea diferă de la o secțiune la alta)
+      const rowTol = h * 12;
+      const limit = Math.min(...anchors.filter(b => b !== a && Math.abs(b.cy - a.cy) < rowTol && b.cx > a.cx + h).map(b => b.cx), Infinity);
+      const all = rowNumbers(T, nums, a, verticalsAt(dr, a.cy), { monotone: false, limit });
+      // dreapta x = x0 + k·d care trece prin cele mai multe etichete (unele sunt decalate sau greșite)
+      let best = null;
+      for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
+        const dd = all[j].d - all[i].d; if (Math.abs(dd) < 1) continue;
+        const m = (all[j].x - all[i].x) / dd; if (!(m > 0)) continue;
+        const q = all[i].x - m * all[i].d, inl = all.filter(p => Math.abs(m * p.d + q - p.x) < h * 1.5);
+        if (!best || inl.length > best.length || (inl.length === best.length && Math.abs(Math.log(m)) < Math.abs(Math.log(best.m)))) { best = inl; best.m = m; }
+      }
+      const pts = best && best.length >= 2 ? best : all;
       let x0 = null, k = null;
-      if (zero) {
-        const sl = pts.filter(p => Math.abs(p.d) > 0.5).map(p => (p.x - zero.x) / p.d).filter(v => v > 0).sort((p, q) => p - q);
-        k = sl.length ? sl[Math.floor(sl.length / 2)] : null; x0 = zero.x;
-      } else if (pts.length >= 2) {
+      if (pts.length >= 2) {
         const f = linFit(pts.map(p => ({ km: p.d, x: p.x }))); if (f && f.m > 0) { k = f.m; x0 = f.q; }
+        const zero = pts.find(p => Math.abs(p.d) < 1e-6); if (zero) x0 = zero.x;   // eticheta 0.000 pe linia grilei
       }
       // eticheta de km: deasupra ancorei, aproape de marginea stângă a benzii
       const kl = kms.filter(t => t.cy > a.cy - h && t.cy < a.cy + h * 40 && t.cx < (pts.length ? Math.min(...pts.map(p => p.x)) : a.cx + h * 30) && t.cx > a.cx - h * 30)
@@ -747,16 +779,27 @@ const AX = (() => {
       // numele axului: cel mai apropiat text ne-numeric de eticheta de km
       const nm = T.filter(t => t !== kl && !NUM.test(t.s) && kmOfText(t.s) == null && !BANDT.test(t.s) && !/cota\s*ref/i.test(t.s) && Math.hypot(t.cx - kl.cx, t.cy - kl.cy) < Math.max(kl.h * 6, 1.5))
         .sort((p, q) => Math.hypot(p.cx - kl.cx, p.cy - kl.cy) - Math.hypot(q.cx - kl.cx, q.cy - kl.cy))[0];
-      const xs = pts.map(p => p.x), left = Math.min(a.x, kl.x, nm ? nm.cx - nm.s.length * nm.h * 0.45 : a.x) - h * 6;
-      const rgt = (xs.length ? Math.max(...xs) : a.cx + 50) + h * 6;
-      out.push({ km: kmOfText(kl.s), axis: nm ? nm.s.trim() : '', a, left, rgt, x0, k, bottom: a.cy - h * 4 });
+      const xs = all.map(p => p.x), left = Math.min(a.x, kl.x, nm ? nm.cx - nm.s.length * nm.h * 0.45 : a.x) - h * 6;
+      let rgt = (xs.length ? Math.max(...xs) : a.cx + 50) + h * 6, lft = left, bottom = a.cy - h * 4;
+      // fereastra după chenarul benzilor: linia orizontală de sus a tabelului (deasupra COTE PROIECT) dă stânga/dreapta
+      const hz = horizontalsNear(dr, a.cx, a.cy - h * 12, a.cy + h * 30).filter(g => g.b - g.a > h * 20);
+      const up = hz.filter(g => g.y > a.cy).sort((p, q) => q.y - p.y)[0];
+      if (up && (!xs.length || (up.a < Math.min(...xs) && up.b > Math.max(...xs) - h))) {
+        rgt = up.b + h * 1.5; lft = Math.min(up.a, kl.x - h, nm ? nm.cx - nm.s.length * nm.h * 0.45 : up.a) - h * 1.5;
+        const dn = hz.filter(g => g.y < a.cy && g.a < up.a + h * 2 && g.b > up.b - h * 2).sort((p, q) => q.y - p.y)[0];
+        if (dn) bottom = dn.y - h * 1.5;
+      }
+      out.push({ km: kmOfText(kl.s), axis: nm ? nm.s.trim() : '', a, left: lft, rgt, x0, k, bottom });
     }
     // înălțimea: până la benzile secțiunii de deasupra, în aceeași coloană
+    // „deasupra” = aceeași coloană (marginea stângă aproape la fel) și cel puțin o bandă mai sus
+    const sameCol = (o, s) => Math.abs(o.left - s.left) < Math.min(o.rgt - o.left, s.rgt - s.left) * 0.5;
+    const aboveOf = s => out.filter(o => o !== s && sameCol(o, s) && o.bottom > s.bottom + s.a.h * 15).sort((p, q) => p.bottom - q.bottom)[0];
+    const gaps = out.map(o => { const ab = aboveOf(o); return ab ? ab.bottom - o.bottom : null; }).filter(v => v).sort((p, q) => p - q);
+    const typ = gaps.length ? gaps[Math.floor(gaps.length / 2)] : null;
     for (const s of out) {
-      const above = out.filter(o => o !== s && o.bottom > s.bottom + 1e-6 && o.left < s.rgt && o.rgt > s.left).sort((p, q) => p.bottom - q.bottom)[0];
-      const gaps = out.map(o => { const ab = out.filter(q => q !== o && q.bottom > o.bottom && q.left < o.rgt && q.rgt > o.left).map(q => q.bottom - o.bottom); return ab.length ? Math.min(...ab) : null; }).filter(v => v);
-      const typ = gaps.length ? gaps.sort((p, q) => p - q)[Math.floor(gaps.length / 2)] : (s.rgt - s.left) * 0.5;
-      const top = above ? above.bottom - s.a.h * 0.5 : s.bottom + typ;
+      const above = aboveOf(s), t0 = typ || (s.rgt - s.left) * 0.5;
+      const top = above ? Math.min(above.bottom - s.a.h * 0.5, s.bottom + t0 * 1.6) : s.bottom + t0 * 1.15;
       s.rect = [s.left, s.bottom, s.rgt - s.left, top - s.bottom];
     }
     return out.map(s => ({ km: s.km, axis: s.axis, rect: s.rect, x0: s.x0, k: s.k })).sort((p, q) => p.km - q.km);
@@ -1206,7 +1249,7 @@ async function dwgToDxf(file) {
   }
 }
 // la schimbarea modului de recunoaștere, proiectele vechi sunt re-analizate automat
-const CORE_VER = 7;
+const CORE_VER = 8;
 async function redetectAll() {
   const p = S.p; if (!p) return;
   const todo = p.docs.filter(d => d.role === 'transversale' || d.role === 'longitudinal');
