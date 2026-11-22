@@ -1,0 +1,5 @@
+AxLive folosește pentru citirea fișierelor DWG biblioteca libredwg-web
+(https://github.com/mlightcad/libredwg-web), bazată pe GNU LibreDWG,
+distribuită sub licența GNU GPL v3 (https://www.gnu.org/licenses/gpl-3.0.html).
+Fișierele libredwg-web.js și libredwg-web.wasm sunt neschimbate față de pachetul npm
+@mlightcad/libredwg-web@0.9.2.
