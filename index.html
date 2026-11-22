@@ -127,14 +127,14 @@ dialog.full canvas{flex:1;width:100%;min-height:0;touch-action:none;display:bloc
     <h2>Proiecte</h2>
     <ul class="list" id="projlist"></ul>
   </div>
-  <p class="muted" style="text-align:center;font-size:12px;margin:18px 0">AxLive · versiunea 8 (22.11.2026)</p>
+  <p class="muted" style="text-align:center;font-size:12px;margin:18px 0">AxLive · versiunea 11 (22.11.2026)</p>
 </section>
 
 <!-- ============ ECRAN: setări proiect ============ -->
 <section data-screen="setup" hidden>
   <div class="bar"><button id="btn-home">‹ Proiecte</button><span class="brand"><i></i>AxLive</span><span class="spacer"></span><button class="primary" id="btn-field">Pe teren ›</button></div>
   <div class="wrap">
-    <h1 id="setup-title"></h1>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><h1 id="setup-title" style="margin:0"></h1><button id="btn-rename">✎ Redenumește</button></div>
     <p class="muted">Importă fișierele, definește profilurile tip și intervalele, apoi treci „Pe teren”.</p>
     <div class="actions"><button class="primary" id="btn-import">Importă fișiere (LandXML, DXF, DWG)</button></div>
     <input type="file" id="file-in" multiple hidden>
@@ -158,7 +158,7 @@ dialog.full canvas{flex:1;width:100%;min-height:0;touch-action:none;display:bloc
 <section data-screen="field" hidden>
   <div class="bar">
     <button id="btn-setup">‹ Proiect</button><b id="f-title" class="brand" style="font-size:17px"></b><span class="spacer"></span>
-    <select id="axis-sel" aria-label="Ax" hidden></select><button data-src="manual" aria-pressed="true">Manual</button><button data-src="gps" aria-pressed="false">GPS</button>
+    <select id="axis-sel" aria-label="Ax" hidden></select><button data-src="manual" aria-pressed="true">Manual</button><button data-src="gps" aria-pressed="false">GPS</button><button data-src="tel" aria-pressed="false">Telefon</button>
     <input id="goto" placeholder="km 0+000" inputmode="decimal" style="width:120px" aria-label="Mergi la km"><button id="btn-goto">Mergi</button>
     <button id="btn-follow" aria-pressed="true" title="Urmărește poziția">Urmărește</button><button id="btn-dark" aria-pressed="false" title="Fundal închis">Noapte</button><button id="btn-cal">Calibrare</button>
   </div>
@@ -1136,6 +1136,7 @@ async function renderHome() {
 async function openProject(id) {
   S.p = S.projects.find(p => p.id === id); S.drawings.clear(); S.point = null; S.so = null; S.raw = []; S.axis = null; S.axisLock = '';
   if (!S.p.axes) { S.p.axes = S.p.alignment ? [{ id: uid(), ...S.p.alignment }] : []; delete S.p.alignment; await save(); }
+  if (relinkAxes()) await save();
   if (S.p.coreVer !== CORE_VER) setTimeout(redetectAll, 50);
   S.planDoc = docsOf('plan')[0]?.id || null; show('setup');
 }
@@ -1225,7 +1226,7 @@ async function runImport() {
       }
     } catch (e) { errs.push(x.f.name + ': ' + e.message); }
   }
-  await save(); renderSetup();
+  relinkAxes(); await save(); renderSetup();
   toast((done.length ? 'Importat: ' + done.join(', ') : 'Nimic importat') + (errs.length ? ' — erori: ' + errs.join('; ') : ''), 6000);
 }
 let dwgModule = null;
@@ -1273,6 +1274,14 @@ function axisByName(name) {
   const n = base(name); if (!n) return '';
   const hit = axes().find(x => base(x.name) === n) || axes().find(x => base(x.name).length > 2 && (n.includes(base(x.name)) || base(x.name).includes(n)));
   return hit ? hit.id : '';
+}
+/** Leagă secțiunile și longitudinalele de axe după numele din desen (și când axele se importă după desene). */
+function relinkAxes() {
+  const p = S.p; if (!p) return false; let ch = false;
+  const fix = (o, name) => { if (o.axisId && axis(o.axisId)) return; const id = name ? axisByName(name) : ''; if ((o.axisId || '') !== id) { o.axisId = id; ch = true; } };
+  for (const c of p.crosses || []) if (!c.manual) fix(c, c.axisName);
+  for (const d of p.docs || []) for (const l of d.longs || []) fix(l, l.axis);
+  return ch;
 }
 function autoCross(d, dr, tpl) {
   S.p.crosses = S.p.crosses.filter(c => c.docId !== d.id || c.manual);
@@ -1359,7 +1368,7 @@ function updateField() {
   $('#axname').textContent = so && axes().length > 1 ? S.axis.name : '';
   $('#off').textContent = so ? `${Math.abs(so.offset).toFixed(2)} m ${so.offset >= 0 ? 'stânga' : 'dreapta'}${so.outside ? ' • în afara axului' : ''}` : (axes().length ? (S.source === 'manual' ? 'Atinge pe plan sau scrie un km' : 'Aștept poziția GPS…') : 'Importă axul (LandXML)');
   $('#xy').textContent = S.point ? `X ${S.point[1].toFixed(2)}  Y ${S.point[0].toFixed(2)}` : '';
-  $('#acc').textContent = S.source === 'gps' && S.acc != null ? `±${Math.round(S.acc)} m` : '';
+  $('#acc').textContent = (S.source === 'gps' || S.source === 'tel') && S.acc != null ? `±${Math.round(S.acc)} m` : '';
   refreshPlanMarkers(); renderSide();
 }
 
@@ -1428,9 +1437,58 @@ function setSource(src) {
       stopGPS(); setSource('manual');
     }, { enableHighAccuracy: true, maximumAge: 0, timeout: 30000 });
   } else stopGPS();
+  if (src === 'tel') startTel(); else stopTel();
   updateField();
 }
-function stopGPS() { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); S.watch = null; }
+function stopGPS() { if (S.watch != null) navigator.geolocation.clearWatch(S.watch); S.watch = null; stopTel(); }
+
+// ---------------- GPS de pe telefon (prin gps.php pe serverul tău) ----------------
+const lsGet = k => { try { return localStorage.getItem(k); } catch { return null; } }, lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch { } };
+function startTel() {
+  if (S.tel) return;
+  let relay = telRelay(false); if (!relay) { S.source = 'manual'; return setSource('manual'); }
+  let code = lsGet('axlive-tel-code') || '';
+  code = (prompt('Codul afișat în AxLive GPS pe telefon (4 cifre).\nScrie „server” ca să schimbi adresa serverului.', code) || '').trim();
+  if (/^server$/i.test(code)) { relay = telRelay(true); if (!relay) { S.source = 'manual'; return setSource('manual'); } code = (prompt('Codul afișat în AxLive GPS pe telefon (4 cifre):', lsGet('axlive-tel-code') || '') || '').trim(); }
+  if (!/^\d{4,8}$/.test(code)) { toast('Cod invalid. Deschide AxLive GPS pe telefon și introdu codul afișat acolo.'); S.source = 'manual'; return setSource('manual'); }
+  lsSet('axlive-tel-code', code);
+  const T = S.tel = { code, lastT: null, fails: 0, warned: false, timer: null };
+  toast('Aștept poziția de la telefon (cod ' + code + ')…');
+  const tick = async () => {
+    if (S.tel !== T) return;
+    try {
+      const r = await fetch(relay + (relay.includes('?') ? '&' : '?') + 'c=' + code + '&_=' + Date.now(), { cache: 'no-store' });
+      if (!r.ok) throw new Error('server ' + r.status);
+      const o = await r.json(); T.fails = 0;
+      if (o.none) { if (!T.warned) { T.warned = true; toast('Telefonul nu a trimis încă nimic. Pe telefon: AxLive GPS → Pornește.', 6000); } }
+      else {
+        if (o.age > 15000 && !T.stale) { T.stale = true; toast('Ultima poziție de la telefon e veche de ' + Math.round(o.age / 1000) + ' s. E pagina AxLive GPS deschisă pe telefon?', 6000); }
+        if (o.age <= 15000) T.stale = false;
+        if (o.srv !== T.lastT) {
+          T.lastT = o.srv;
+          const g = AX.fromWGS84(o.lat, o.lon); S.raw.push([g.e, g.n]); if (S.raw.length > 30) S.raw.shift();
+          if (S.source === 'tel') setPoint([g.e + S.p.shift.e, g.n + S.p.shift.n], o.acc);
+        }
+      }
+    } catch (e) {
+      if (++T.fails === 4) toast('Nu ajung la ' + relay + '. Verifică internetul tabletei sau adresa serverului (la Telefon scrie „server” în loc de cod).', 8000);
+    }
+    if (S.tel === T) T.timer = setTimeout(tick, 1000);
+  };
+  tick();
+}
+/** Adresa lui gps.php: pe serverul tău lângă aplicație, sau (de pe GitHub) cea salvată de tine. */
+function telRelay(ask) {
+  const here = /^https?:$/.test(location.protocol) && !location.hostname.endsWith('github.io') && !location.hostname.includes('claude') ? new URL('gps.php', location.href).href : '';
+  let r = lsGet('axlive-relay') || here;
+  if (ask || !r) {
+    const v = (prompt('Adresa fișierului gps.php de pe serverul tău (cPanel), de ex.\nhttps://domeniul-tau.ro/axlive/gps.php', r || 'https://') || '').trim();
+    if (!/^https:\/\/[^\s]+\.php$/i.test(v)) { toast('Adresa trebuie să înceapă cu https:// și să se termine cu gps.php.', 6000); return ''; }
+    r = v; lsSet('axlive-relay', r);
+  }
+  return r;
+}
+function stopTel() { if (S.tel) { clearTimeout(S.tel.timer); S.tel = null; } }
 
 // ---------------- Evenimente ----------------
 document.addEventListener('click', async e => {
@@ -1438,6 +1496,11 @@ document.addEventListener('click', async e => {
   const ds = t.dataset, p = S.p;
   if (ds.open) return openProject(ds.open);
   if (ds.del) { const pr = S.projects.find(x => x.id === ds.del); if (pr && t.dataset.confirm) { await Store.delProject(pr); renderHome(); } else { t.dataset.confirm = 1; t.textContent = 'Sigur? Apasă din nou'; } return; }
+  if (t.id === 'btn-rename' || t.id === 'setup-title') {
+    const n = (prompt('Numele proiectului:', p.name) || '').trim();
+    if (n && n !== p.name) { p.name = n; await save(); renderSetup(); toast('Proiect redenumit: ' + n); }
+    return;
+  }
   if (t.id === 'btn-new') { const name = $('#newname').value.trim() || 'Proiect nou'; const pr = { id: uid(), name, created: Date.now(), axes: [], docs: [], typicals: [], intervals: [], crosses: [], crossTpl: {}, shift: { e: 0, n: 0 }, coreVer: CORE_VER }; await Store.saveProject(pr); $('#newname').value = ''; S.projects.push(pr); return openProject(pr.id); }
   if (t.id === 'btn-home') { stopGPS(); S.source = 'manual'; return show('home'); }
   if (t.id === 'btn-setup') { stopGPS(); setSource('manual'); return show('setup'); }
@@ -1452,7 +1515,7 @@ document.addEventListener('click', async e => {
   if (ds.tframe) { const ty = p.typicals.find(x => x.id === ds.tframe); return frameZone(doc(ty.docId), ty.name, ty.rect, [], async rect => { ty.rect = rect; await save(); }); }
   if (ds.trm) { p.typicals = p.typicals.filter(x => x.id !== ds.trm); await save(); return renderSetup(); }
   if (t.id === 'iv-add') { const last = p.intervals.at(-1), axId = last ? last.axisId || '' : (axes().length > 1 ? axes()[0].id : ''), al = axis(axId) || axes()[0], same = p.intervals.filter(i => (i.axisId || '') === axId), st = same.length ? Math.max(...same.map(i => i.kmTo)) : (al?.staStart || 0); p.intervals.push({ id: uid(), axisId: axId, kmFrom: st, kmTo: al ? Math.min(st + 100, al.sta.at(-1)) : st + 100, side: 'ambele', typId: p.typicals[0]?.id || '', note: '' }); await save(); return renderSetup(); }
-  if (ds.axrm) { if (!t.dataset.confirm) { t.dataset.confirm = 1; t.textContent = 'Sigur?'; return; } p.axes = p.axes.filter(x => x.id !== ds.axrm); for (const o of [...p.docs, ...p.intervals]) if (o.axisId === ds.axrm) o.axisId = ''; await save(); return renderSetup(); }
+  if (ds.axrm) { if (!t.dataset.confirm) { t.dataset.confirm = 1; t.textContent = 'Sigur?'; return; } p.axes = p.axes.filter(x => x.id !== ds.axrm); for (const o of [...p.docs, ...p.intervals]) if (o.axisId === ds.axrm) o.axisId = ''; relinkAxes(); await save(); return renderSetup(); }
   if (ds.ivrm) { p.intervals = p.intervals.filter(x => x.id !== ds.ivrm); await save(); return renderSetup(); }
   if (ds.cdet) { const d = doc(ds.cdet); const n = autoCross(d, await drawingOf(d)); await save(); renderSetup(); return toast(n ? `${p.crosses.filter(c => c.docId === d.id).length} secțiuni detectate.` : 'Nu am găsit etichete de km (ex. „km 0+125.00”).'); }
   if (ds.cadj) {
